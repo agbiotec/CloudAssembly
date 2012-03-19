@@ -1,0 +1,17 @@
+set source_dir_root = /usr/local/projects/VHTNGS/sample_data_new
+set target_dir = /usr/local/scratch/tstockwe/for_elodie/NHRCC_data
+mkdir -p ${target_dir}
+
+foreach tuple ( `cat /home/tstockwe/for_avian_flu/20110118_NHRCC_samples_for_Elodie.txt | sort -u` )
+  set db_name = `echo ${tuple} | cut -d ',' -f 1`
+  set col_name = `echo ${tuple} | cut -d ',' -f 2`
+  set bac_id = `echo ${tuple} | cut -d ',' -f 3`
+  cp ${source_dir_root}/${db_name}/${col_name}/${bac_id}/mapping/*_final.fastq ${target_dir}/.
+  cp ${source_dir_root}/${db_name}/${col_name}/${bac_id}/mapping/*_final.*.sff ${target_dir}/.
+end
+
+pushd ${target_dir:h}
+  tar -cvzf ${target_dir:t}.tgz ${target_dir:t}
+popd
+
+

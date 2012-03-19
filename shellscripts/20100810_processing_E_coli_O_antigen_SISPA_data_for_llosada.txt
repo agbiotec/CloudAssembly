@@ -1,0 +1,58 @@
+setenv PATH /usr/local/packages/clc-ngs-cell:/usr/local/packages/clc-bfx-cell:${PATH}
+set delivery_dir = /usr/local/projects/VHTNGS/delivery_data/20100810_LILIANA_O_ANTIGEN_SAMPLES
+mkdir -p ${delivery_dir}
+foreach bc ( `grep LILIANA ${barcode_file_name} | cut -f 1`)
+  echo "INFO: processing barcode [${bc}]"
+  set deconvolved_fastq = ${deconvolved_merged_fastq_dir}/trim_${bc}.fastq
+  set delivery_fastq = ${delivery_dir}/O_antigen_${bc}.fastq
+  if ( -e ${deconvolved_fastq} ) then
+    echo "INFO:  copying [${deconvolved_fastq}] to [${delivery_fastq}]"
+    cp ${deconvolved_fastq} ${delivery_fastq}
+  else 
+    echo "ERROR:  [${deconvolved_fastq}] does not exist"
+  endif
+  set deconvolved_sff = ${deconvolved_merged_sff_dir}/trim_${bc}.sff
+  set delivery_sff = ${delivery_dir}/O_antigen_${bc}.sff
+  if ( -e ${deconvolved_sff} ) then
+    echo "INFO:  copying [${deconvolved_sff}] to [${delivery_sff}]"
+    cp ${deconvolved_sff} ${delivery_sff}
+  else 
+    echo "ERROR:  [${deconvolved_sff}] does not exist"
+  endif
+end
+
+foreach i ( `ls -1 /usr/local/projects/VHTNGS/delivery_data/20100810_LILIANA_O_ANTIGEN_SAMPLES/O_antigen_*.fastq` )
+  set prefix = `echo ${i:t:r}`
+  set name = `echo TRIM_${prefix}.fastq`
+  set output = `echo ${i:h}/TRIM_${i:t}`
+  echo "INFO: TrimBWAstyle [${i}],[${prefix}],[${name}],[${output}]"
+qsub \
+  -P 810001  \
+  -N ${name} \
+  -cwd \
+  -l medium,h_vmem=2G,h_core=4 \
+  -o ${output} \
+  /usr/local/projects/VHTNGS/scripts/TrimBWAstyle.pl ${i}
+end
+
+
+pushd ${delivery_dir}
+  ln -s /usr/local/packages/clc-bfx-cell/license.properties ./
+
+  foreach bc ( `grep LILIANA ${barcode_file_name} | cut -f 1`)
+    set fastq = TRIM_O_antigen_${bc}.fastq
+    set sff = O_antigen_${bc}.sff
+    echo "INFO:  Assembling [O_antigen_${bc}]"
+    clc_novo_assemble \
+      -o O_antigen_${bc}_contigs.fasta \
+      -q ${fastq} \
+      -q ${sff} \
+      >& O_antigen_${bc}_clc_novo_assemble.log
+  end
+
+  mkdir -p /usr/local/scratch/tstockwe/for_llosada
+  cp *.fastq /usr/local/scratch/tstockwe/for_llosada
+  cp *.sff /usr/local/scratch/tstockwe/for_llosada
+
+popd
+

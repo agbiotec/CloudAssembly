@@ -1,0 +1,57 @@
+csh
+use sge
+source /usr/local/sge_current/jcvi/common/settings.csh
+setenv PATH /usr/local/packages/seq454-64_patch-v2.5p1-internal-10Jun32-1/bin:${PATH}
+setenv PATH /usr/local/packages/clc-ngs-cell:/usr/local/packages/clc-bfx-cell:${PATH}
+setenv RUBYLIB /usr/local/devel/DAS/users/tstockwe/Ruby/Tools/Bio
+use emboss50
+umask 002
+
+
+set sispa_pool_name = 20110622_2_58xJBC
+set sff_file_list = "\
+"
+set fastq_file_list = "\
+/usr/local/JTC/data/SOLEXA_archive1/110727_SOLEXA3_00047_FC/Data/Intensities/BaseCalls/demultiplex_07-08-2011/001/GERALD_07-08-2011_solexa/s_4_1_sequence.txt,\
+/usr/local/JTC/data/SOLEXA_archive1/110727_SOLEXA3_00047_FC/Data/Intensities/BaseCalls/demultiplex_07-08-2011/001/GERALD_07-08-2011_solexa/s_4_2_sequence.txt\
+"
+
+
+set project_root = /usr/local/projects/VHTNGS
+set scratch_root = /usr/local/scratch/VIRAL/VHTNGS
+set barcode_data_root = ${project_root}/barcode_data
+set sispa_data_root = ${project_root}/sispa_data_new
+set sispa_data_root = ${scratch_root}/sispa_data_new
+set sample_data_root = ${project_root}/sample_data_new
+set barcode_data_dir = ${barcode_data_root}/${sispa_pool_name}
+set sispa_data_dir = ${sispa_data_root}/${sispa_pool_name}
+set fastq_dir = ${sispa_data_dir}/fastq
+set merged_fastq_dir = ${sispa_data_dir}/merged_fastq
+set deconvolved_merged_fastq_dir = ${sispa_data_dir}/deconvolved_merged_fastq
+set sff_dir = ${sispa_data_dir}/sff
+set merged_sff_dir = ${sispa_data_dir}/merged_sff
+set deconvolved_merged_sff_dir = ${sispa_data_dir}/deconvolved_merged_sff
+set merged_fastq_file = ${merged_fastq_dir}/merged_solexa_sequence.fastq
+set merged_sff_file = ${merged_sff_dir}/merged_454.sff
+set barcode_file_name = ${barcode_data_dir}/barcode_metadata_from_GLK.txt
+
+
+pushd ${project_root}
+
+
+################### GENERATE CAS2CONSED DATA #############################
+cat $barcode_file_name | \
+  grep -v "POSCTRL" | \
+  tr ' ' '_' | \
+  tr '\t' ':' | \
+  cut -d ':' -f 3,6,7 | \
+  sort -u | \
+  gawk -F':' '{printf("%s,%s,%s\n",$2,$3,$1);}' > ~/for_vhtngs/${sispa_pool_name}_tuples.txt
+
+/usr/local/devel/DAS/software/Elvira/bin/gridMultiViralCas2ConsedPipeline \
+  -in ~/for_vhtngs/${sispa_pool_name}_tuples.txt \
+  -project_code 810001
+
+# then wait...  can monitor jobs with qstat...
+
+

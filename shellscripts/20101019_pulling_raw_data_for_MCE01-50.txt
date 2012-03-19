@@ -1,0 +1,17 @@
+set source_dir_root = /usr/local/projects/VHTNGS/sample_data_new
+set target_dir = /usr/local/scratch/tstockwe/for_elodie/MCE01_50_data
+mkdir -p ${target_dir}
+
+foreach tuple ( `grep MCE /usr/local/projects/VHTNGS/barcode_data/20091215_MCEIRSsamples1to50/barcode_metadata_from_GLK.txt | gawk -F'\t' '{printf("%s,%s,%s\n", $6, $7,$3);}' | sort -u` )
+  set db_name = `echo ${tuple} | cut -d ',' -f 1`
+  set col_name = `echo ${tuple} | cut -d ',' -f 2`
+  set bac_id = `echo ${tuple} | cut -d ',' -f 3`
+  cp ${source_dir_root}/${db_name}/${col_name}/${bac_id}/mapping/*_final.fastq ${target_dir}/.
+  cp ${source_dir_root}/${db_name}/${col_name}/${bac_id}/mapping/*_final.*.sff ${target_dir}/.
+end
+
+pushd ${target_dir:h}
+  tar -cvzf ${target_dir:t}.tgz ${target_dir:t}
+popd
+
+

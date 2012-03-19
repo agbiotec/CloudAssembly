@@ -1,0 +1,376 @@
+csh
+use sge
+source /usr/local/sge_current/jcvi/common/settings.csh
+setenv PATH /usr/local/packages/seq454-2.6/bin:${PATH}
+setenv PATH /usr/local/packages/clc-ngs-cell:/usr/local/packages/clc-bfx-cell:${PATH}
+setenv RUBYLIB /usr/local/devel/DAS/users/tstockwe/Ruby/Tools/Bio
+use emboss50
+umask 002
+
+
+set sispa_pool_name = 20111205_47xU54VIRAL
+set sff_file_list = "\
+"
+set fastq_file_list = "\
+/usr/local/JTC/data/SOLEXA_archive1/111018_SOLEXA4_0083_AD0BY2ACXX/Unaligned_05-12-2011/Project_u54viralillumina/Sample_U54VIRALPOOL1-PE-ILI83-1/U54VIRALPOOL1-PE-ILI83-1_AGATAG_L004_R1_filtered.fastq,\
+/usr/local/JTC/data/SOLEXA_archive1/111018_SOLEXA4_0083_AD0BY2ACXX/Unaligned_05-12-2011/Project_u54viralillumina/Sample_U54VIRALPOOL1-PE-ILI83-1/U54VIRALPOOL1-PE-ILI83-1_AGATAG_L004_R2_filtered.fastq\
+"
+
+set project_root = /usr/local/projects/VHTNGS
+set scratch_root = /usr/local/scratch/VIRAL/VHTNGS
+set barcode_data_root = ${project_root}/barcode_data
+set sispa_data_root = ${project_root}/sispa_data_new
+set sispa_data_root = ${scratch_root}/sispa_data_new
+set sample_data_root = ${project_root}/sample_data_new
+set barcode_data_dir = ${barcode_data_root}/${sispa_pool_name}
+set sispa_data_dir = ${sispa_data_root}/${sispa_pool_name}
+set fastq_dir = ${sispa_data_dir}/fastq
+set merged_fastq_dir = ${sispa_data_dir}/merged_fastq
+set deconvolved_merged_fastq_dir = ${sispa_data_dir}/deconvolved_merged_fastq
+set sff_dir = ${sispa_data_dir}/sff
+set merged_sff_dir = ${sispa_data_dir}/merged_sff
+set deconvolved_merged_sff_dir = ${sispa_data_dir}/deconvolved_merged_sff
+set merged_fastq_file = ${merged_fastq_dir}/merged_solexa_sequence.fastq
+set merged_sff_file = ${merged_sff_dir}/merged_454.sff
+set barcode_file_name = ${barcode_data_dir}/barcode_metadata_from_GLK.txt
+
+mkdir -p ${scratch_root}
+
+pushd ${project_root}
+
+if ( -d ${barcode_data_root} ) then
+else
+  mkdir -p ${barcode_data_root}
+endif
+if ( -d ${sispa_data_root} ) then
+else
+  mkdir -p ${sispa_data_root}
+endif
+if ( -d ${sample_data_root} ) then
+else
+  mkdir -p ${sample_data_root}
+endif
+
+if ( -d ${barcode_data_dir} ) then
+else
+  mkdir -p ${barcode_data_dir}
+endif
+if ( -d ${sispa_data_dir} ) then
+else
+  mkdir -p ${sispa_data_dir}
+endif
+
+
+if ( -d ${fastq_dir} ) then
+else
+  mkdir -p ${fastq_dir}
+endif
+if ( -d ${merged_fastq_dir} ) then
+else
+  mkdir -p ${merged_fastq_dir}
+endif
+if ( -d ${deconvolved_merged_fastq_dir} ) then
+else
+  mkdir -p ${deconvolved_merged_fastq_dir}
+endif
+
+if ( -d ${sff_dir} ) then
+else
+  mkdir -p ${sff_dir}
+endif
+if ( -d ${merged_sff_dir} ) then
+else
+  mkdir -p ${merged_sff_dir}
+endif
+if ( -d ${deconvolved_merged_sff_dir} ) then
+else
+  mkdir -p ${deconvolved_merged_sff_dir}
+endif
+
+
+# build tab-separated-file of barcode metadata based on Excel file attached to 454 BugZero #???
+# column order is:
+# barcode_name, 
+# barcode_sequence, 
+# bac_id, 
+# blinded_number, 
+# species, 
+# database_name, 
+# collection_name,
+# optional - sanger data exists? yes or no
+
+kedit ${barcode_file_name}
+
+# I used 
+# for 20091215_MCEIRSsamples1to50
+# cat /usr/local/projects/VHTNGS/sample_data/MCE_1_50_StandardPipeSFF/barcodes/barcode_metadata_from_GLK.txt | \
+# gawk '{printf("%s\t%s\t%s\n",$0,"giv3","MCE");}' > ${barcode_file_name}
+# for 20090205_HIsamples6to100
+# cat /usr/local/projects/VHTNGS/sample_data/HI_6_100_StandardPipeSFF/barcodes/barcode_metadata_from_GLK.txt | \
+# gawk '{printf("%s\t%s\t%s\n",$0,"giv3","HI");}' > ${barcode_file_name}
+# and for 20091005_AVIAN113
+# cat sample_data/AVIAN_113_StandardPipeSFF/barcodes/barcode_metadata_from_GLK.txt | \
+#   gawk '{if ($4 ~ /\-AK\-/){c="AK";}\
+#          else if($4 ~ /\-RF\-/){c="RF";}\
+#          else if($4 ~ /\-SJC\-/){c="SJC";}\
+#          else if($4 ~ /\-OHC\-/){c="OHC";}\
+#          else if($4 ~ /\-DB\-/){c="DB";}\
+#          else if($4 ~ /\_CC\_/){c="CC";}\
+#          printf("%s\t%s\t%s\n",$0,"giv3",c);}' > ${barcode_file_name}
+
+if ( -e ${barcode_file_name}.pat ) then
+  rm ${barcode_file_name}.pat
+endif
+touch ${barcode_file_name}.pat
+cat ${barcode_file_name} | \
+  gawk '{mm=int(length($2)/10.0); printf(">%s <mismatch=%d>\n%s\n", $1, mm, $2);}' \
+  >> ${barcode_file_name}.pat
+
+
+
+
+
+################################### SOLEXA DATA PROCESSING ####################################
+# split the hiseq data into 10 chunks and deduplicate it
+
+set split_fastq_dir = ${sispa_data_dir}/split_fastq
+set dedup_fastq_dir = ${sispa_data_dir}/deduplicated_fastq
+if ( -d ${split_fastq_dir} ) then
+else
+  mkdir -p ${split_fastq_dir}
+endif
+if ( -d ${dedup_fastq_dir} ) then
+else
+  mkdir -p ${dedup_fastq_dir}
+endif
+
+@ hiseq_num_parts = 10
+@ hiseq_part = 0
+
+foreach fastq_file (`echo ${fastq_file_list} | tr -d ' ' | tr ',' '\n' | sort -u`)
+  ln -s ${fastq_file} ${fastq_dir}/${fastq_file:t}
+  pushd  ${fastq_dir} >& /dev/null
+    /usr/local/devel/VIRIFX/software/Elvira/bin/splitFastq -sanger -i ${fastq_file:t} -n ${hiseq_num_parts} -o ${split_fastq_dir}
+  popd >& /dev/null
+end
+
+set mate1_prefix = `ls -1 ${fastq_dir} | head -1`
+set mate2_prefix = `ls -1 ${fastq_dir} | tail -1`
+set dedup_prefix = `ls -1 ${fastq_dir} | head -1 | cut -d '_' -f 1,2,3`
+
+# either deduplicate the Solexa data
+@ hiseq_num_parts = 10
+@ hiseq_part = 0
+while ( ${hiseq_part} < ${hiseq_num_parts} )
+  /usr/local/devel/DAS/software/Elvira/bin/removeRedundantMatePairs \
+    -n 50 \
+    -s 30000000 \
+    -sanger \
+    -mate1 ${split_fastq_dir}/${mate1_prefix}.part_${hiseq_part}.fastq \
+    -mate2 ${split_fastq_dir}/${mate2_prefix}.part_${hiseq_part}.fastq \
+    -o     ${dedup_fastq_dir} \
+    -prefix part_${hiseq_part}_${dedup_prefix}
+  @ hiseq_part = ${hiseq_part} + 1
+end
+
+# or don't deduplicate the Solexa data
+@ hiseq_num_parts = 10
+@ hiseq_part = 0
+while ( ${hiseq_part} < ${hiseq_num_parts} )
+  ln -s ${split_fastq_dir}/${mate1_prefix}.part_${hiseq_part}.fastq ${dedup_fastq_dir}/part_${hiseq_part}_${dedup_prefix}_1.fastq
+  ln -s ${split_fastq_dir}/${mate2_prefix}.part_${hiseq_part}.fastq ${dedup_fastq_dir}/part_${hiseq_part}_${dedup_prefix}_2.fastq
+  @ hiseq_part = ${hiseq_part} + 1
+end
+
+
+# Solexa fastq data merging, deconvolution, trimming, and non-redundant filtering
+
+# merge the deduplicated fastq data, leave quality values unmodified, and make the accessions like old ones - post casava 1.8 hiseq data
+@ hiseq_num_parts = 10
+@ hiseq_part = 0
+while ( ${hiseq_part} < ${hiseq_num_parts} )
+  cat ${dedup_fastq_dir}/part_${hiseq_part}_*.fastq > ${merged_fastq_file:h}/part_${hiseq_part}_${merged_fastq_file:t}.new_accessions
+  /home/tstockwe/bin/convert_to_old_illumina_fastq_header.sh ${merged_fastq_file:h}/part_${hiseq_part}_${merged_fastq_file:t}.new_accessions ${merged_fastq_file:h}/part_${hiseq_part}_${merged_fastq_file:t}
+  @ hiseq_part = ${hiseq_part} + 1
+end
+
+
+# count the number of solexa records
+@ hiseq_num_parts = 10
+@ hiseq_part = 0
+while ( ${hiseq_part} < ${hiseq_num_parts} )
+  set sol_rec_cnt = `grep "^@SOLEXA" ${merged_fastq_file:h}/part_${hiseq_part}_${merged_fastq_file:t} | wc -l`
+  echo "INFO: Solexa record count is [${sol_rec_cnt}]"
+  set max_sol_recs_per_deconv = 1000000
+  if ( ${sol_rec_cnt} > 0 ) then
+    @ num_parts = 1 + ${sol_rec_cnt} / ${max_sol_recs_per_deconv}
+  else
+    @ num_parts = 0
+  endif
+  echo "INFO: Solexa partition count is [${num_parts}]"
+  /usr/local/devel/DAS/software/Elvira/bin/splitFastq -sanger -o ${merged_fastq_file:h} -i ${merged_fastq_file:h}/part_${hiseq_part}_${merged_fastq_file:t} -n ${num_parts}
+  @ part = 0
+  while ( ${part} < ${num_parts} )
+    runLinux2 --output ${merged_fastq_file:h}/part_${hiseq_part}_${merged_fastq_file:t}_grid_deconvolve.stdout.part_${part} --error ${merged_fastq_file:h}/part_${hiseq_part}_${merged_fastq_file:t}_grid_deconvolve.stderr.part_${part} --project 810001 --length marathon --nowait --commandline "/usr/local/devel/VIRIFX/users/tstockwe/software/Grid/bin/grid-deconvolve.pl --project 810001 --infile ${merged_fastq_file:h}/part_${hiseq_part}_${merged_fastq_file:t}.part_${part}.fastq --pattern ${barcode_file_name}.pat --queue fast.q --tmpdir ${merged_fastq_file:h}/part_${hiseq_part}_${merged_fastq_file:t}_deconvolver_tmp.part_${part} --outdir ${merged_fastq_file:h}/part_${hiseq_part}_${merged_fastq_file:t}_deconvolver_test.part_${part} --errdir ${merged_fastq_file:h}/part_${hiseq_part}_${merged_fastq_file:t}_deconvolver_err.part_${part} --readlength 50 --clamplength 6 --keylength 0 --verbose >& ${merged_fastq_file:h}/part_${hiseq_part}_${merged_fastq_file:t}_deconvolver.log.part_${part}"
+    @ part = ${part} + 1
+  end
+  @ hiseq_part = ${hiseq_part} + 1
+end
+
+
+# Now wait until all the parts are finished
+ls -1 ${merged_fastq_file:h}/part_*_${merged_fastq_file:t}_deconvolver.log.part_*
+tail -n 1 ${merged_fastq_file:h}/part_*_${merged_fastq_file:t}_deconvolver.log.part_*
+tail -n 1 ${merged_fastq_file:h}/part_*_${merged_fastq_file:t}_deconvolver.log.part_* | grep -B 2 "[1-9] failed tasks"
+more ${merged_fastq_file:h}/part_*_${merged_fastq_file:t}_deconvolver.log.part_*
+# if anything had failed tasks, set hiseq_part and part to correct settings, and redo runLinux command
+
+
+@ hiseq_num_parts = 10
+@ hiseq_part = 0
+while ( ${hiseq_part} < ${hiseq_num_parts} )
+  set sol_rec_cnt = `grep "^@SOLEXA" ${merged_fastq_file:h}/part_${hiseq_part}_${merged_fastq_file:t} | wc -l`
+  echo "INFO: Solexa record count is [${sol_rec_cnt}]"
+  set max_sol_recs_per_deconv = 1000000
+  if ( ${sol_rec_cnt} > 0 ) then
+    @ num_parts = 1 + ${sol_rec_cnt} / ${max_sol_recs_per_deconv}
+  else
+    @ num_parts = 0
+  endif
+  echo "INFO: Solexa partition count is [${num_parts}]"
+  @ part = 0
+  while ( ${part} < ${num_parts} )
+    foreach bc ( `cat ${barcode_file_name} | cut -f 1 | sort -u`)
+      echo "INFO:  moving data for hiseq_part [${hiseq_part}] of [${hiseq_num_parts}], barcode [${bc}], part [${part}] of [${num_parts}]"
+      set in_fastq = ${merged_fastq_file:h}/part_${hiseq_part}_${merged_fastq_file:t}_deconvolver_test.part_${part}/${bc}/${bc}.fastq
+      set out_fastq = ${merged_fastq_file:h}/part_${hiseq_part}_${merged_fastq_file:t}_deconvolver_test.part_${part}/${bc}.fastq
+      set in_trimpoints = ${merged_fastq_file:h}/part_${hiseq_part}_${merged_fastq_file:t}_deconvolver_test.part_${part}/${bc}/${bc}.trim
+      set out_trimpoints = ${merged_fastq_file:h}/part_${hiseq_part}_${merged_fastq_file:t}_deconvolver_test.part_${part}/trim_${bc}.txt
+      if ( -e ${in_fastq} ) then
+        echo "INFO:  mv ${in_fastq} ${out_fastq}"
+        mv ${in_fastq} ${out_fastq}
+      else
+        echo "ERROR:  [${in_fastq}] does not exist"
+      endif
+      if ( -e ${in_trimpoints} ) then
+        echo "INFO:  mv ${in_trimpoints} ${out_trimpoints}"
+        mv ${in_trimpoints} ${out_trimpoints}
+      else
+        echo "ERROR:  [${in_trimpoints}] does not exist"
+      endif
+    end
+    @ part = ${part} + 1
+  end
+  @ hiseq_part = ${hiseq_part} + 1
+end
+
+
+# combine the individual partitions of deconvolved and trimmed solexa data by barcode
+# and then make the data non-redundant
+
+# 2010/10/24 - made change to account for new _FC in accessions
+#  sort ${deconvolved_fastq_trimpoints} | tr '_' ':' | sed -e 's/:/_/' > ${deconvolved_fastq_trimpoints}.sorted
+# 2010/10/24 - made change to account for new _FC in accessions - by adding second sub(":","_",sid);
+# 2010/10/24 - made change to account for new _FC in accessions - by adding second sub(":","_",sid);
+
+cat ${merged_fastq_dir}/part_[0-9]*_merged_solexa_sequence.fastq > ${merged_fastq_file}
+
+foreach bc ( `cat ${barcode_file_name} | cut -f 1 | sort -u`)
+  set deconvolved_fastq = ${deconvolved_merged_fastq_dir}/trim_${bc}.fastq
+  set deconvolved_fastq_trimpoints = ${deconvolved_merged_fastq_dir}/trim_${bc}.fastq.trimpoints
+  set deconvolved_fastq_untrimmed = ${deconvolved_merged_fastq_dir}/trim_${bc}.fastq.untrimmed
+  set nr_deconvolved_fastq = ${deconvolved_merged_fastq_dir}/nr_trim_${bc}.fastq
+
+  if ( -e ${deconvolved_fastq} ) then
+    rm ${deconvolved_fastq}
+  endif
+  touch ${deconvolved_fastq}
+
+  if ( -e ${deconvolved_fastq_trimpoints} ) then
+    rm ${deconvolved_fastq_trimpoints}
+  endif
+  touch ${deconvolved_fastq_trimpoints}
+
+  if ( -e ${deconvolved_fastq_untrimmed} ) then
+    rm ${deconvolved_fastq_untrimmed}
+  endif
+  touch ${deconvolved_fastq_untrimmed}
+
+  echo "INFO: Accumulating Illumina/Solexa trimmed fastq and trimpoint files for barcode [${bc}]"
+  set file_cnt = `ls -1 ${merged_fastq_file:h}/part_*_${merged_fastq_file:t}_deconvolver_test.part_*/${bc}.fastq | wc -l`
+  if ( ${file_cnt} > 0  ) then
+    foreach i ( `ls -1 ${merged_fastq_file:h}/part_*_${merged_fastq_file:t}_deconvolver_test.part_*/${bc}.fastq` )
+      cat ${i} >> ${deconvolved_fastq}
+    end
+  else
+    echo "WARNING:  [${merged_fastq_file:h}/part_*_${merged_fastq_file:t}_deconvolver_test.part_*/${bc}*.fastq] does not exist"
+  endif
+
+  set file_cnt = `ls -1 ${merged_fastq_file:h}/part_*_${merged_fastq_file:t}_deconvolver_test.part_*/trim_${bc}*.txt | wc -l`
+  if ( ${file_cnt} > 0  ) then
+    foreach i ( `ls -1 ${merged_fastq_file:h}/part_*_${merged_fastq_file:t}_deconvolver_test.part_*/trim_${bc}*.txt`)
+      cat ${i} | \
+        gawk -F'\t' '{if(NF>2){printf("%s\t%s\t%s\n",$(NF-2),$(NF-1),$(NF));}}' >> ${deconvolved_fastq_trimpoints}
+    end
+  else
+    echo "WARNING:  [${merged_fastq_file:h}/part_*_${merged_fastq_file:t}_deconvolver_test.part_*/trim_${bc}*.txt] does not exist"
+  endif
+
+
+########## For two underscores in accessions ########################
+  sort ${deconvolved_fastq_trimpoints} | tr '_' ':' | sed -e 's/:/_/' | sed -e 's/:/_/'  > ${deconvolved_fastq_trimpoints}.sorted
+  mv ${deconvolved_fastq_trimpoints}.sorted ${deconvolved_fastq_trimpoints}
+
+  if ( `cat ${deconvolved_fastq_trimpoints} | wc -l` > 0 ) then
+    /home/tstockwe/bin/fastqfile.pl \
+      -o ${deconvolved_fastq_untrimmed} \
+      -i ${deconvolved_fastq_trimpoints} \
+      -f ${merged_fastq_file}
+  endif
+
+  cat ${deconvolved_fastq_untrimmed} | \
+    gawk '{t=NR % 4;\
+           if(t==1){\
+             if(length(sid) > 0 ) {printf("%s\t%s\t%s\t%s\n", sid,s,sid,q)};\
+             sid=substr($0,2);\
+             gsub("_",":",sid);\
+             sub(":","_",sid);\
+             sub(":","_",sid);\
+           }\
+           else if (t==2){s=$0;}\
+           else if (t==3){qid=sid;}\
+           else if (t==0){q=$0;}\
+          }\
+          END {\
+            if(length(sid) > 0 ) {printf("%s\t%s\t%s\t%s\n", sid,s,sid,q)};\
+          }' | \
+    sort | \
+    gawk -F'\t' '{printf("@%s\n%s\n+%s\n%s\n", $1, $2, "", $4);}' > ${deconvolved_fastq_untrimmed}.sorted
+  mv ${deconvolved_fastq_untrimmed} ${deconvolved_fastq_untrimmed}.unsorted
+  mv ${deconvolved_fastq_untrimmed}.sorted ${deconvolved_fastq_untrimmed}
+
+  cat ${deconvolved_fastq} | \
+    gawk '{t=NR % 4;\
+           if(t==1){\
+             if(length(sid) > 0 ) {printf("%s\t%s\t%s\t%s\n", sid,s,sid,q)};\
+             sid=substr($0,2);\
+             gsub("_",":",sid);\
+             sub(":","_",sid);\
+             sub(":","_",sid);\
+           }\
+           else if (t==2){s=$0;}\
+           else if (t==3){qid=sid;}\
+           else if (t==0){q=$0;}\
+          }\
+          END {\
+             if(length(sid) > 0 ) {printf("%s\t%s\t%s\t%s\n", sid,s,sid,q)};\
+          }' | \
+    sort | \
+    gawk -F'\t' '{printf("@%s\n%s\n+%s\n%s\n", $1, $2, "", $4);}' > ${nr_deconvolved_fastq}.sorted
+  mv ${deconvolved_fastq} ${nr_deconvolved_fastq}.unsorted
+  mv ${nr_deconvolved_fastq}.sorted ${nr_deconvolved_fastq}
+
+end
+
+############################# END SOLEXA DATA PROCESSING ###############################
+

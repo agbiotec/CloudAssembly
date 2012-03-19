@@ -1,0 +1,65 @@
+csh
+
+set delivery_data_dir = /usr/local/projects/VHTNGS/delivery_data/20100802_AVIAN_samples_fasta_for_GenBank
+mkdir ${delivery_data_dir}
+cd ${delivery_data_dir}
+
+cat  /home/tstockwe/for_avian_flu/20100730_data_deliveries/giv3_samples_*_edits.txt \
+  > VALID.csv
+
+echo "" > DRAFT.csv
+
+cat VALID.csv | tr -d ' ' > VALID.csv.fixed
+cat DRAFT.csv | tr -d ' ' > DRAFT.csv.fixed
+
+set datestamp = 20100802
+set status_types = "VALID,DRAFT"
+
+foreach status_type (`echo ${status_types} | tr ',' '\n'`)
+  foreach col_name ( `cat ${status_type}.csv.fixed | cut -d ',' -f 2 | sort -u `)
+    set consolidated_output_file = ${datestamp}_${col_name}_${status_type}.fasta
+    if ( -e ${consolidated_output_file} ) then
+      rm ${consolidated_output_file}
+    endif
+    touch ${consolidated_output_file}
+    foreach rec (`grep ",${col_name}," ${status_type}.csv.fixed`)
+      set db = `echo "${rec}" | cut -d ',' -f 1`
+      set bac_id = `echo "${rec}" | cut -d ',' -f 3`
+
+      set glk_data = `/usr/local/common/Elvira/bin/flam -D ${db} -b ${bac_id} --attr "subtype,blinded_number,species_code" -H | cut -f 3- | tr '\t' '|'`
+      set glk_subtype = `echo "${glk_data}" | cut -d '|' -f 1`
+      set blinded = `echo "${glk_data}" | cut -d '|' -f 2`
+      set species = `echo "${glk_data}" | cut -d '|' -f 3`
+
+      set input_fasta_file_cnt = `ls -1 /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/cas2consed.consensus.fasta | wc -l`
+      if ( ${input_fasta_file_cnt} == 1 ) then
+        set sample_output_file = ${blinded}.fasta
+        if ( -e ${sample_output_file} ) then
+          rm ${sample_output_file}
+        endif
+        touch ${sample_output_file}
+        set input_fasta_file = `ls -1 /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/cas2consed.consensus.fasta`
+        cat ${input_fasta_file} | \
+          gawk -v bac="${bac_id}" -v blinded="${blinded}" -v species="${species}" \
+            '{if ( $0 ~ />/ ) {split(substr($1,2),sa,"_");seg=sa[1];printf(">%s-%s %s %s\n",bac, seg, blinded, species);} \
+              else print $0;}' >> ${consolidated_output_file}
+        cat ${input_fasta_file} | \
+          gawk -v bac="${bac_id}" -v blinded="${blinded}" -v species="${species}" \
+            '{if ( $0 ~ />/ ) {split(substr($1,2),sa,"_");seg=sa[1];printf(">gnl|NIGSP|%s.%s [segment=%s] [organism=%s]\n", blinded, seg, seg, species);} \
+              else print $0;}' >> ${sample_output_file}
+      else
+        echo "ERROR: Problem with record=[${rec}], blinded,species,input_fasta_file_cnt=[${blinded},${species},${input_fasta_file_cnt}]"]    
+      endif
+    end
+  end
+end
+
+
+
+
+
+
+
+
+
+

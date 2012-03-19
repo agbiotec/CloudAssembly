@@ -1,0 +1,168 @@
+foreach bc ( `cat ${barcode_file_name} | cut -f 1`)
+  set deconvolved_fastq = ${deconvolved_merged_fastq_dir}/trim_${bc}.fastq
+  set deconvolved_fastq_trimpoints = ${deconvolved_merged_fastq_dir}/trim_${bc}.fastq.trimpoints
+  set deconvolved_fastq_untrimmed = ${deconvolved_merged_fastq_dir}/trim_${bc}.fastq.untrimmed
+  set nr_deconvolved_fastq = ${deconvolved_merged_fastq_dir}/nr_trim_${bc}.fastq
+
+  if ( `cat ${deconvolved_fastq_trimpoints} | wc -l` > 0 ) then
+    /home/tstockwe/bin/fastqfile.pl \
+      -o ${deconvolved_fastq_untrimmed} \
+      -i ${deconvolved_fastq_trimpoints} \
+      -f ${merged_fastq_file}
+  endif
+
+  cat ${deconvolved_fastq_untrimmed} | \
+    gawk '{t=NR % 4;\
+           if(t==1){\
+             if(length(sid) > 0 ) {printf("%s\t%s\t%s\t%s\n", sid,s,sid,q)};\
+             sid=substr($0,2);\
+             gsub("_",":",sid);\
+             sub(":","_",sid);\
+             sub(":","_",sid);\
+           }\
+           else if (t==2){s=$0;}\
+           else if (t==3){qid=sid;}\
+           else if (t==0){q=$0;}\
+          }\
+          END {\
+            if(length(sid) > 0 ) {printf("%s\t%s\t%s\t%s\n", sid,s,sid,q)};\
+          }' | \
+    sort | \
+    gawk -F'\t' '{printf("@%s\n%s\n+%s\n%s\n", $1, $2, "", $4);}' > ${deconvolved_fastq_untrimmed}.sorted
+  mv ${deconvolved_fastq_untrimmed} ${deconvolved_fastq_untrimmed}.unsorted
+  mv ${deconvolved_fastq_untrimmed}.sorted ${deconvolved_fastq_untrimmed}
+end
+
+############################# COPY SISPA DATA TO SAMPLE AREAS ##########################
+
+foreach bc_rec ( `cat ${barcode_file_name} | tr ' ' '_' | tr '\t' ':' ` )
+  set bc       = `echo "${bc_rec}" | cut -d ':' -f 1`
+  set bc_seq   = `echo "${bc_rec}" | cut -d ':' -f 2`
+  set bac_id   = `echo "${bc_rec}" | cut -d ':' -f 3`
+  set blinded  = `echo "${bc_rec}" | cut -d ':' -f 4`
+  set species  = `echo "${bc_rec}" | cut -d ':' -f 5`
+  set db_name  = `echo "${bc_rec}" | cut -d ':' -f 6`
+  set col_name = `echo "${bc_rec}" | cut -d ':' -f 7`
+
+  set bac_id_len = `echo ${bac_id} | tr -d '\n' | wc -c`
+  set db_name_len = `echo ${db_name} | tr -d '\n' | wc -c`
+  set col_name_len = `echo ${col_name} | tr -d '\n' | wc -c`
+  if (${bac_id_len} > 0 && ${db_name_len} > 0 && ${col_name_len} > 0) then
+    echo "INFO: processing data for SISPA pool [${sispa_pool_name}] barcode [${bc}]"
+    set deconvolved_fastq_trimpoints = ${deconvolved_merged_fastq_dir}/trim_${bc}.fastq.trimpoints
+    set deconvolved_fastq_untrimmed = ${deconvolved_merged_fastq_dir}/trim_${bc}.fastq.untrimmed
+    set nr_deconvolved_fastq = ${deconvolved_merged_fastq_dir}/nr_trim_${bc}.fastq
+
+    set sample_data = ${sample_data_root}/${db_name}/${col_name}/${bac_id}
+
+    set sample_data_solexa = ${sample_data}/solexa
+
+    if ( -d ${sample_data} ) then
+    else
+      mkdir -p ${sample_data}
+    endif
+
+    if ( -d ${sample_data_solexa} ) then
+    else
+      mkdir -p ${sample_data_solexa}
+    endif
+
+    if ( -e ${nr_deconvolved_fastq} ) then
+      echo "INFO: copying fastq data to [${db_name}/${col_name}/${bac_id}]"
+      cp ${deconvolved_fastq_trimpoints} ${sample_data_solexa}/${sispa_pool_name}_trim_${bc}.fastq.trimpoints
+      cp ${deconvolved_fastq_untrimmed} ${sample_data_solexa}/${sispa_pool_name}_trim_${bc}.fastq.untrimmed
+      cp ${nr_deconvolved_fastq} ${sample_data_solexa}/${sispa_pool_name}_nr_trim_${bc}.fastq
+    endif
+
+  else
+    echo "WARNING:  No sample data transfer for bc_rec [${bc_rec}]"
+  endif
+end
+
+########################## CONSOLIDATE SAMPLE DATA ##################################
+
+foreach bc_rec ( `cat ${barcode_file_name} | tr ' ' '_' | tr '\t' ':' | cut -d ':' -f 3,6,7 | sort -u`)
+  set bac_id   = `echo "${bc_rec}" | cut -d ':' -f 1`
+  set db_name  = `echo "${bc_rec}" | cut -d ':' -f 2`
+  set col_name = `echo "${bc_rec}" | cut -d ':' -f 3`
+
+  echo "INFO: processing data for [${db_name}/${col_name}/${bac_id}]"
+
+  set sample_data = ${sample_data_root}/${db_name}/${col_name}/${bac_id}
+  set sample_data_solexa = ${sample_data}/solexa
+  set sample_mapping_dir = ${sample_data}/mapping
+
+  set sample_data_merged_solexa = ${sample_data}/merged_solexa
+
+  set sample_data_merged_solexa_file = ${sample_data_merged_solexa}/${db_name}_${col_name}_${bac_id}.fastq
+  set sample_data_merged_solexa_file_t = ${sample_data_merged_solexa}/${db_name}_${col_name}_${bac_id}.fastq.trimpoints
+  set sample_data_merged_solexa_file_u = ${sample_data_merged_solexa}/${db_name}_${col_name}_${bac_id}.fastq.untrimmed
+
+  if ( -d ${sample_data_merged_solexa} ) then
+  else
+    mkdir -p ${sample_data_merged_solexa}
+  endif
+
+  cat ${sample_data_solexa}/*_nr_trim_*.fastq | \
+    gawk '{t=NR % 4;\
+           if(t==1){\
+             if(length(sid) > 0 ) {printf("%s\t%s\t%s\t%s\n", sid,s,sid,q)};\
+             sid=substr($0,2);\
+             gsub("_",":",sid);\
+             sub(":","_",sid);\
+             sub(":","_",sid);\
+           }\
+           else if (t==2){s=$0;}\
+           else if (t==3){qid=sid;}\
+           else if (t==0){q=$0;}\
+          }\
+          END {\
+             if(length(sid) > 0 ) {printf("%s\t%s\t%s\t%s\n", sid,s,sid,q)};\
+          }' | \
+    sort | \
+    gawk -F'\t' '{printf("@%s\n%s\n+%s\n%s\n", $1, $2, "", $4);}' \
+      > ${sample_data_merged_solexa_file}
+
+  cat ${sample_data_solexa}/*_trim_*.fastq.trimpoints | \
+    sort \
+    > ${sample_data_merged_solexa_file_t}
+
+  cat ${sample_data_solexa}/*_trim_*.fastq.untrimmed | \
+    gawk '{t=NR % 4;\
+           if(t==1){\
+             if(length(sid) > 0 ) {printf("%s\t%s\t%s\t%s\n", sid,s,sid,q)};\
+             sid=substr($0,2);\
+             gsub("_",":",sid);\
+             sub(":","_",sid);\
+             sub(":","_",sid);\
+           }\
+           else if (t==2){s=$0;}\
+           else if (t==3){qid=sid;}\
+           else if (t==0){q=$0;}\
+          }\
+          END {\
+             if(length(sid) > 0 ) {printf("%s\t%s\t%s\t%s\n", sid,s,sid,q)};\
+          }' | \
+    sort | \
+    gawk -F'\t' '{printf("@%s\n%s\n+%s\n%s\n", $1, $2, "", $4);}' \
+      > ${sample_data_merged_solexa_file_u}
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

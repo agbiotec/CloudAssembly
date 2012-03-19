@@ -1,0 +1,161 @@
+cd /usr/local/projects/VHTNGS/algorithm_development/cc/clc_hybrid_de_novo_assembly
+ln -s /usr/local/packages/clc-bfx-cell/license.properties ./
+ls ../sff_data/fragment/*.sff
+ls ../fastq_data/bwa_trimmed/*.fastq
+
+
+nohup /usr/local/packages/clc-ngs-cell/clc_novo_assemble \
+  -o conco_contigs.fasta \
+  -q \
+  ../sff_data/fragment/F4F42CG01.sff \
+  ../sff_data/fragment/F4F42CG02.sff \
+  ../sff_data/fragment/FP1DVJK01.sff \
+  ../sff_data/fragment/FP1DVJK02.sff \
+  ../sff_data/fragment/FPDDOC301.sff \
+  ../sff_data/fragment/FPDDOC302.sff \
+  ../sff_data/fragment/FPVTTQ201.sff \
+  ../sff_data/fragment/FPVTTQ202.sff \
+  ../sff_data/fragment/GCW8HQY01.sff \
+  ../sff_data/fragment/GCW8HQY02.sff \
+  ../sff_data/fragment/GCZI1YT01.sff \
+  ../sff_data/fragment/GCZI1YT02.sff \
+  ../sff_data/fragment/GD2IC1B01.sff \
+  ../sff_data/fragment/GD2IC1B02.sff \
+  ../sff_data/fragment/GD59BW101.sff \
+  ../sff_data/fragment/GD59BW102.sff \
+  ../sff_data/fragment/GD73DHA01.sff \
+  ../sff_data/fragment/GD73DHA02.sff \
+  ../sff_data/fragment/GD7SZBR01.sff \
+  ../sff_data/fragment/GD7SZBR02.sff \
+  ../sff_data/fragment/GDAKBUF01.sff \
+  ../sff_data/fragment/GDAKBUF02.sff \
+  ../sff_data/fragment/GDD8EWS01.sff \
+  ../sff_data/fragment/GDD8EWS02.sff \
+  ../sff_data/fragment/GDH34GS01.sff \
+  ../sff_data/fragment/GDH34GS02.sff \
+  ../sff_data/fragment/GDNM2HN01.sff \
+  ../sff_data/fragment/GDNM2HN02.sff \
+  ../sff_data/fragment/GDUTKBD01.sff \
+  ../sff_data/fragment/GDUTKBD02.sff \
+  ../sff_data/fragment/GEDL95V01.sff \
+  ../sff_data/fragment/GEDL95V02.sff \
+  ../sff_data/fragment/GEE6P7V01.sff \
+  ../sff_data/fragment/GEE6P7V02.sff \
+  ../sff_data/fragment/GEZU4RU01.sff \
+  ../sff_data/fragment/GEZV0ZX01.sff \
+  ../fastq_data/bwa_trimmed/frag_trimmed_s_8_1_sequence.fastq \
+  ../fastq_data/bwa_trimmed/frag_trimmed_s_8_2_sequence.fastq \
+  -p fb ss 300 500 -i \
+  ../fastq_data/bwa_trimmed/pe_trimmed_s_8_1_sequence.fastq \
+  ../fastq_data/bwa_trimmed/pe_trimmed_s_8_2_sequence.fastq &
+
+setenv PATH /usr/local/packages/clc-ngs-cell:/usr/local/packages/clc-bfx-cell:${PATH}
+setenv RUBYLIB /usr/local/devel/DAS/users/eventer/svn/16s/site_analysis/Tools/Bio
+use emboss50
+umask 002
+
+mkdir -p /usr/local/scratch/tstockwe/VHTNGS/cc/fastq_data/bwa_trimmed
+cd /usr/local/scratch/tstockwe/VHTNGS/cc/fastq_data/bwa_trimmed
+nohup /usr/local/devel/DAS/users/eventer/svn/16s/site_analysis/Tools/Bio/fastq2seqQualFasta.rb \
+  convert_trimmed_s_8_1_sequence \
+  /usr/local/projects/VHTNGS/algorithm_development/cc/fastq_data/bwa_trimmed/trimmed_s_8_1_sequence.fastq &
+
+nohup /usr/local/devel/DAS/users/eventer/svn/16s/site_analysis/Tools/Bio/fastq2seqQualFasta.rb \
+  convert_trimmed_s_8_2_sequence \
+  /usr/local/projects/VHTNGS/algorithm_development/cc/fastq_data/bwa_trimmed/trimmed_s_8_2_sequence.fastq &
+
+nohup cat convert_trimmed_s_8_1_sequence.fa | \
+  gawk -v dir='F' \
+    '{if($0 ~ />/){ \
+        def=substr($1,2); \
+        split(def,a,"#"); \
+        split(a[1],e,":"); \
+        run=e[1]; \
+        lane=e[2]; \
+        tile=e[3]; \
+        x=e[4]; \
+        y=e[5]; \
+        printf(">%s_%s_%s_%s_%s%s template=%s_%s_%s_%s_%s dir=%s library=%s\n", run, lane, tile, x, y, dir, run, lane, tile, x, y, dir, run);} \
+      else { \
+        if ( length($1) > 0 )print $0; }}' > \
+  convert_trimmed_s_8_1_sequence_GSdefline.fna &
+
+nohup cat convert_trimmed_s_8_1_sequence.qual | \
+  gawk -v dir='F' \
+    '{if($0 ~ />/){ \
+        def=substr($1,2); \
+        split(def,a,"#"); \
+        split(a[1],e,":"); \
+        run=e[1]; \
+        lane=e[2]; \
+        tile=e[3]; \
+        x=e[4]; \
+        y=e[5]; \
+        printf(">%s_%s_%s_%s_%s%s template=%s_%s_%s_%s_%s dir=%s library=%s\n", run, lane, tile, x, y, dir, run, lane, tile, x, y, dir, run);} \
+      else { \
+        if ( length($1) > 0 )print $0; }}' > \
+  convert_trimmed_s_8_1_sequence_GSdefline.fna.qual &
+
+nohup cat convert_trimmed_s_8_2_sequence.fa | \
+  gawk -v dir='R' \
+    '{if($0 ~ />/){ \
+        def=substr($1,2); \
+        split(def,a,"#"); \
+        split(a[1],e,":"); \
+        run=e[1]; \
+        lane=e[2]; \
+        tile=e[3]; \
+        x=e[4]; \
+        y=e[5]; \
+        printf(">%s_%s_%s_%s_%s%s template=%s_%s_%s_%s_%s dir=%s library=%s\n", run, lane, tile, x, y, dir, run, lane, tile, x, y, dir, run);} \
+      else { \
+        if ( length($1) > 0 )print $0; }}' > \
+  convert_trimmed_s_8_2_sequence_GSdefline.fna &
+
+nohup cat convert_trimmed_s_8_2_sequence.qual | \
+  gawk -v dir='R' \
+    '{if($0 ~ />/){ \
+        def=substr($1,2); \
+        split(def,a,"#"); \
+        split(a[1],e,":"); \
+        run=e[1]; \
+        lane=e[2]; \
+        tile=e[3]; \
+        x=e[4]; \
+        y=e[5]; \
+        printf(">%s_%s_%s_%s_%s%s template=%s_%s_%s_%s_%s dir=%s library=%s\n", run, lane, tile, x, y, dir, run, lane, tile, x, y, dir, run);} \
+      else { \
+        if ( length($1) > 0 )print $0; }}' > \
+  convert_trimmed_s_8_2_sequence_GSdefline.fna.qual &
+
+
+cp *_GSdefline.fna* /usr/local/projects/VHTNGS/algorithm_development/cc/fastq_data/bwa_trimmed/.
+
+# NOTE:  I tried to use 454 software in /usr/local/packages/seq454-64_patch-v2.5p1-internal-10Jun32-1/bin
+# but it died when indexing SOLEXA paired end data formated with GS De Novo Assembler DEFLINES
+
+source /usr/local/sge_current/jcvi/common/settings.csh
+setenv PATH /usr/local/seq454-64/bin:${PATH}
+use emboss50
+umask 002
+
+cd /usr/local/projects/VHTNGS/algorithm_development/cc/sff_data/fragment
+setenv PATH /usr/local/seq454-64/bin:/home/sgeworker/bin:/usr/local/n1ge/bin:/usr/local/n1ge/bin/lx26-eon64/:/home/tstockwe/bin:/usr/local/bin:/usr/local/common:/usr/bin:/bin:/opt/gnome/bin:/opt/kde3/bin:/opt/lam/bin:/usr/local/packages/tmake/bin:/usr/lib64/qt-3.3/bin:/usr/kerberos/bin
+
+newAssembly solexaPairedEndsSffFragmentsNewblerAssembly
+
+foreach i ( `ls -1 *.sff` )
+  addRun solexaPairedEndsSffFragmentsNewblerAssembly ${i}
+end
+
+foreach i ( `ls -1 /usr/local/projects/VHTNGS/algorithm_development/cc/fastq_data/bwa_trimmed/*_GSdefline.fna` )
+  addRun -p solexaPairedEndsSffFragmentsNewblerAssembly ${i}
+end
+
+nohup runProject \
+  -large \
+  -noace \
+  solexaPairedEndsSffFragmentsNewblerAssembly >& \
+  runProject_solexaPairedEndsSffFragmentsNewblerAssembly.log &
+
+

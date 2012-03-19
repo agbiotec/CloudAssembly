@@ -1,0 +1,61 @@
+source /usr/local/sge_current/jcvi/common/settings.csh
+setenv PATH /usr/local/packages/seq454-64_patch-v2.5p1-internal-10Jun32-1/bin:${PATH}
+setenv PATH /usr/local/packages/clc-ngs-cell:/usr/local/packages/clc-bfx-cell:${PATH}
+setenv RUBYLIB /usr/local/devel/DAS/users/tstockwe/Ruby/Tools/Bio
+use emboss50
+umask 002
+
+ln -s /usr/local/packages/clc-bfx-cell/license.properties ./
+
+
+
+/usr/local/devel/VIRIFX/software/Matrix/bin/phaser.pl \
+  --infile /usr/local/projects/VHTNGS/sample_data_new/swiv/SW/29436/mapping/swiv_SW_29436_hybrid_edited_refs.cas \
+  --coverage 10 \
+  --fraction 0.1 \
+  --informat cas \
+  --verbose 1 > swiv_phased.txt
+
+
+foreach c ( `grep -v "^#" swiv_phased.txt | cut -f 2 | sort -u` )
+  grep -v "^#" swiv_phased.txt | \
+    grep "${c}" | \
+    gawk '{print $1}' | \
+    tr -d ' ' > ${c}.uaccno.list
+
+  sfffile -i ${c}.uaccno.list \
+    -o swiv_SW_29436.${c}.TCAG.sff \
+  /usr/local/projects/VHTNGS/sample_data_new/swiv/SW/29436/merged_sff/swiv_SW_29436.TCAG.sff
+
+  clc_novo_assemble \
+    -q swiv_SW_29436.${c}.TCAG.sff \
+    -o swiv_SW_29436.${c}.TCAG.sff.contigs >& swiv_SW_29436.${c}.TCAG.sff.clc_log
+
+  clc_ref_assemble_long \
+    -q swiv_SW_29436.${c}.TCAG.sff \
+    -d swiv_SW_29436.${c}.TCAG.sff.contigs \
+    -o swiv_SW_29436.${c}.TCAG.sff.cas
+
+  find_variations \
+      -a swiv_SW_29436.${c}.TCAG.sff.cas \
+      -c 10 \
+      -o swiv_SW_29436.${c}.TCAG.sff.cas.new_contigs \
+      -v \
+      -f 0.1 >& swiv_SW_29436.${c}.TCAG.sff.cas_find_variations.log
+
+  set seg = `echo ${c} | cut -d '.' -f 1`
+  clc_ref_assemble_long \
+    -q swiv_SW_29436.${c}.TCAG.sff \
+    -d /usr/local/projects/VHTNGS/sample_data_new/swiv/SW/29436/mapping/swiv_SW_29436_${seg}.extracted.edited.fasta  \
+    -o swiv_SW_29436.${c}.TCAG.sff.mapped_to_original_reference.cas
+
+  find_variations \
+      -a swiv_SW_29436.${c}.TCAG.sff.mapped_to_original_reference.cas \
+      -c 10 \
+      -o swiv_SW_29436.${c}.TCAG.sff.mapped_to_original_reference.cas.new_contigs \
+      -v \
+      -f 0.1 >& swiv_SW_29436.${c}.TCAG.sff.mapped_to_original_reference.cas_find_variations.log
+
+end
+
+

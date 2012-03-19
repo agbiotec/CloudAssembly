@@ -1,0 +1,31 @@
+setenv PATH /usr/local/packages/clc-ngs-cell:/usr/local/packages/clc-bfx-cell:${PATH}
+set delivery_dir = /usr/local/projects/VHTNGS/delivery_data/20100724_LILIANA_O_ANTIGEN_SAMPLES
+mkdir -p ${delivery_dir}
+foreach bc ( `grep LILIANA ${barcode_file_name} | cut -f 1`)
+  echo "INFO: processing barcode [${bc}]"
+  set deconvolved_fastq = ${deconvolved_merged_fastq_dir}/trim_${bc}.fastq
+  set delivery_file = ${delivery_dir}/O_antigen_${bc}.fastq
+  if ( -e ${deconvolved_fastq} ) then
+    echo "INFO:  copying [${deconvolved_fastq}] to [${delivery_file}]"
+    cp ${deconvolved_fastq} ${delivery_file}
+  else 
+    echo "ERROR:  [${deconvolved_fastq}] does not exist"
+  endif
+end
+
+pushd ${delivery_dir}
+  ln -s /usr/local/packages/clc-bfx-cell/license.properties ./
+
+  foreach fastq ( `ls -1 *.fastq` )
+    echo "INFO:  Assembling [${fastq}]"
+    clc_novo_assemble \
+      -o ${fastq:r}_contigs.fasta \
+      -q ${fastq} \
+      >& ${fastq:r}_clc_novo_assemble.log
+  end
+
+  mkdir -p /usr/local/scratch/tstockwe/for_llosada
+  cp *.fastq /usr/local/scratch/tstockwe/for_llosada
+
+popd
+

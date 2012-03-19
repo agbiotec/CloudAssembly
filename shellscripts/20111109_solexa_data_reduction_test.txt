@@ -1,0 +1,433 @@
+csh
+use sge
+source /usr/local/sge_current/jcvi/common/settings.csh
+setenv PATH /usr/local/packages/seq454-64_patch-v2.5p1-internal-10Jun32-1/bin:${PATH}
+setenv PATH /usr/local/packages/clc-ngs-cell:/usr/local/packages/clc-bfx-cell:${PATH}
+setenv RUBYLIB /usr/local/devel/DAS/users/tstockwe/Ruby/Tools/Bio
+use emboss50
+umask 002
+
+set project_root = /usr/local/projects/VHTNGS
+set sample_data_root = ${project_root}/sample_data_new
+set barcode_data_root = ${project_root}/barcode_data
+
+set sispa_pool_name = 20110707_104xMPA_2xMG_1xSW_6xNORV
+set sispa_pool_name = 20110715_1_61xMPS
+set sispa_pool_name = 20110715_2_55xMPS
+set sispa_pool_name = 20110721_47xMPA_6xSB
+set sispa_pool_name = 20110815_47xVEEV_6xARBO_3xJC_1xJEV_1xYFV
+set sispa_pool_name = 20110816_65xMPV_7xRSV
+
+set barcode_data_dir = ${barcode_data_root}/${sispa_pool_name}
+set barcode_file_name = ${barcode_data_dir}/barcode_metadata_from_GLK.txt
+
+foreach bc_rec ( `cat ${barcode_file_name} | grep -v "POSCTRL" | tr ' ' '_' | tr '\t' ':' | cut -d ':' -f 3,6,7 | sort -u | grep -v "LASKEN" | grep -v "givtest" | grep -v "vda"` )
+  set bac_id   = `echo "${bc_rec}" | cut -d ':' -f 1`
+  set db_name  = `echo "${bc_rec}" | cut -d ':' -f 2`
+  set col_name = `echo "${bc_rec}" | cut -d ':' -f 3`
+
+set triplet_file = /home/tstockwe/for_vhtngs/20111114_bad_refs_tuples.txt
+set triplet_file = /home/tstockwe/for_vhtngs/20111114_test_add_sanger_reassemble_only.txt
+set triplet_file = /home/tstockwe/for_vhtngs/20111117_bad_refs_tuples.txt
+
+foreach bc_rec ( `cat ${triplet_file} | tr ',' ':' | sort -u` )
+  set bac_id   = `echo "${bc_rec}" | cut -d ':' -f 3`
+  set db_name  = `echo "${bc_rec}" | cut -d ':' -f 1`
+  set col_name = `echo "${bc_rec}" | cut -d ':' -f 2`
+
+  set flu_a = 0
+  switch ($db_name)
+    case giv:
+      echo "Using Influenza A reference data for database [${db_name}]"
+      set ref_dir = /usr/local/projects/VHTNGS/reference_data/influenza_a_virus
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/influenza_a_virus_full_length_NT
+      set segments = "HA MP NA NP NS PA PB1 PB2"
+      set seg_cov = "HA:175000 MP:100000 NA:145000 NP:155000 NS:89000 PA:220000 PB1:235000 PB2:235000"
+      set flu_a = 1
+    breaksw
+    case giv3:
+      echo "Using Influenza A reference data for database [${db_name}]"
+      set ref_dir = /usr/local/projects/VHTNGS/reference_data/influenza_a_virus
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/influenza_a_virus_full_length_NT
+      set segments = "HA MP NA NP NS PA PB1 PB2"
+      set seg_cov = "HA:175000 MP:100000 NA:145000 NP:155000 NS:89000 PA:220000 PB1:235000 PB2:235000"
+      set flu_a = 1
+    breaksw
+    case piv:
+      echo "Using Influenza A reference data for database [${db_name}]"
+      set ref_dir = /usr/local/projects/VHTNGS/reference_data/influenza_a_virus
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/influenza_a_virus_full_length_NT
+      set segments = "HA MP NA NP NS PA PB1 PB2"
+      set seg_cov = "HA:175000 MP:100000 NA:145000 NP:155000 NS:89000 PA:220000 PB1:235000 PB2:235000"
+      set flu_a = 1
+    breaksw
+    case swiv:
+      echo "Using Influenza A reference data for database [${db_name}]"
+      set ref_dir = /usr/local/projects/VHTNGS/reference_data/influenza_a_virus
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/influenza_a_virus_full_length_NT
+      set segments = "HA MP NA NP NS PA PB1 PB2"
+      set seg_cov = "HA:175000 MP:100000 NA:145000 NP:155000 NS:89000 PA:220000 PB1:235000 PB2:235000"
+      set flu_a = 1
+    breaksw
+    case rtv:
+      echo "Using Rotavirus reference data for database [${db_name}]"
+      set ref_dir      = /usr/local/projects/VHTNGS/reference_data/rota_virus
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/rota_virus_full_length_NT
+      set segments = "VP1 VP2 VP3 VP4 NSP1 VP6 NSP3 NSP2 VP7 NSP4 NSP5"
+      set seg_cov = "VP1:326700 VP2:268600 VP3:255000 VP4:232400 NSP1:151800 VP6:132300 NSP3:104100 NSP2:102200 VP7:103000 NSP4:70800 NSP5:62900"
+      set flu_a = 0
+    breaksw
+    case gcv:
+      echo "Using Coronavirus reference data for database [${db_name}]"
+      set ref_dir      = /usr/local/projects/VHTNGS/reference_data/corona_virus
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/corona_virus_full_length_NT
+      set segments = "MAIN"
+      set seg_cov = "MAIN:3000000"
+      set flu_a = 0
+    breaksw
+    case veev:
+      echo "Using VEEV reference data for database [${db_name}]"
+      set ref_dir      = /usr/local/projects/VHTNGS/reference_data/veev
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/veev_full_length_NT
+      set segments = "MAIN"
+      set seg_cov = "MAIN:1200000"
+      set flu_a = 0
+    breaksw
+    case hadv:
+      echo "Using HADV reference data for database [${db_name}]"
+      set ref_dir      = /usr/local/projects/VHTNGS/reference_data/hadv
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/hadv_full_length_NT
+      set segments = "MAIN"
+      set seg_cov = "MAIN:4500000"
+      set flu_a = 0
+    breaksw
+    case mpv:
+      echo "Using MPV reference data for database [${db_name}]"
+      set ref_dir      = /usr/local/projects/VHTNGS/reference_data/mpv
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/mpv_full_length_NT
+      set segments = "MAIN"
+      set seg_cov = "MAIN:1335000"
+      set flu_a = 0
+    breaksw
+    case norv:
+      echo "Using NORV reference data for database [${db_name}]"
+      set ref_dir      = /usr/local/projects/VHTNGS/reference_data/norv
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/norv_full_length_NT
+      set segments = "MAIN"
+      set seg_cov = "MAIN:774600"
+      set flu_a = 0
+    breaksw
+    case vzv:
+      echo "Using VZV reference data for database [${db_name}]"
+      set ref_dir      = /usr/local/projects/VHTNGS/reference_data/vzv
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/vzv_full_length_NT
+      set segments = "MAIN"
+      set seg_cov = "MAIN:12500000"
+      set flu_a = 0
+    breaksw
+    case rsv:
+      echo "Using RSV reference data for database [${db_name}]"
+      set ref_dir      = /usr/local/projects/VHTNGS/reference_data/rsv
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/rsv_full_length_NT
+      set segments = "MAIN"
+      set seg_cov = "MAIN:1530000"
+      set flu_a = 0
+    breaksw
+    case jev:
+      echo "Using JEV reference data for database [${db_name}]"
+      set ref_dir      = /usr/local/projects/VHTNGS/reference_data/jev
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/jev_full_length_NT
+      set segments = "MAIN"
+      set seg_cov = "MAIN:1100000"
+      set flu_a = 0
+    breaksw
+    case yfv:
+      echo "Using YFV reference data for database [${db_name}]"
+      set ref_dir      = /usr/local/projects/VHTNGS/reference_data/yfv
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/yfv_full_length_NT
+      set segments = "MAIN"
+      set seg_cov = "MAIN:1090000"
+      set flu_a = 0
+    breaksw
+    default:
+      echo "Using no reference data for database [${db_name}]"
+      set ref_dir      = ""
+      set blast_db_dir = ""
+      set segments = ""
+      set seg_cov = ""
+      set flu_a = 0
+    breaksw
+  endsw
+
+  echo "INFO: processing data for [${db_name}/${col_name}/${bac_id}]"
+  set sample_data = ${sample_data_root}/${db_name}/${col_name}/${bac_id}
+
+  set sample_data_merged_solexa = ${sample_data}/merged_solexa
+  set sample_data_merged_sff = ${sample_data}/merged_sff
+  set sample_data_merged_sanger = ${sample_data}/merged_sanger
+  set sample_data_merged_solexa_file = ${sample_data_merged_solexa}/${db_name}_${col_name}_${bac_id}.fastq
+  set sample_data_merged_solexa_file_t = ${sample_data_merged_solexa}/${db_name}_${col_name}_${bac_id}.fastq.trimpoints
+  set sample_data_merged_solexa_file_u = ${sample_data_merged_solexa}/${db_name}_${col_name}_${bac_id}.fastq.untrimmed
+  set sample_data_merged_sff_file = ${sample_data_merged_sff}/${db_name}_${col_name}_${bac_id}.sff
+  set sample_data_merged_sanger_file = ${sample_data_merged_sanger}/${db_name}_${col_name}_${bac_id}.fasta
+
+  set seg_best_ref_dir = ${sample_data}/reference_fasta
+  set best_refs_file = ${seg_best_ref_dir}/reference.fasta
+  set sample_mapping_dir = ${sample_data}/mapping
+
+  pushd ${sample_mapping_dir} >& /dev/null
+    set best_edited_refs_file = ${db_name}_${col_name}_${bac_id}_reference_edited.fasta
+    set final_sff_reads = ${db_name}_${col_name}_${bac_id}_final.sff
+    set final_fastq_reads = ${db_name}_${col_name}_${bac_id}_final.fastq
+    set final_fasta_reads = ${db_name}_${col_name}_${bac_id}_final.fasta
+
+    if ( ! -e full_solexa_dataset_${final_fastq_reads} ) then
+      cp ${final_fastq_reads} full_solexa_dataset_${final_fastq_reads}
+    endif
+    if ( ! -e full_solexa_dataset_${final_fastq_reads}.trimpoints ) then
+      cp ${final_fastq_reads}.trimpoints full_solexa_dataset_${final_fastq_reads}.trimpoints
+    endif
+    if ( ! -e full_solexa_dataset_${final_fastq_reads}.untrimmed ) then
+      cp ${final_fastq_reads}.untrimmed full_solexa_dataset_${final_fastq_reads}.untrimmed
+    endif
+    if ( ! -e full_solexa_dataset_${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.cas ) then
+      cp ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.cas full_solexa_dataset_${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.cas
+    endif
+    if ( ! -e full_solexa_dataset_${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs ) then
+      cp ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs full_solexa_dataset_${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs
+    endif
+    if ( ! -e full_solexa_dataset_${db_name}_${col_name}_${bac_id}_hybrid_edited_refs_find_variations.log ) then
+      cp ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs_find_variations.log full_solexa_dataset_${db_name}_${col_name}_${bac_id}_hybrid_edited_refs_find_variations.log
+    endif
+    if ( ( ${flu_a} > 0 ) && ( ! -e full_solexa_dataset_${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs.fluValidator ) ) then
+      cp ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs.fluValidator full_solexa_dataset_${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs.fluValidator
+    endif
+
+    /usr/local/devel/DAS/software/Elvira/bin/filterFastqDataFromCas \
+      -cas full_solexa_dataset_${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.cas \
+      -d 200 \
+      -o full_solexa_dataset_${db_name}_${col_name}_${bac_id}_hybrid_edited_refs_reduced_solexa_include_list_unsorted.txt
+
+    sort -u full_solexa_dataset_${db_name}_${col_name}_${bac_id}_hybrid_edited_refs_reduced_solexa_include_list_unsorted.txt > \
+      full_solexa_dataset_${db_name}_${col_name}_${bac_id}_hybrid_edited_refs_reduced_solexa_include_list_sorted.txt
+
+    join -1 1 -2 1 \
+      full_solexa_dataset_${db_name}_${col_name}_${bac_id}_hybrid_edited_refs_reduced_solexa_include_list_sorted.txt \
+      full_solexa_dataset_${final_fastq_reads}.trimpoints | \
+      tr ' ' '\t' > ${final_fastq_reads}.trimpoints
+
+    /home/tstockwe/bin/fastqfile.pl \
+      -o ${final_fastq_reads} \
+      -i full_solexa_dataset_${db_name}_${col_name}_${bac_id}_hybrid_edited_refs_reduced_solexa_include_list_sorted.txt \
+      -f full_solexa_dataset_${final_fastq_reads}
+
+    /home/tstockwe/bin/fastqfile.pl \
+      -o ${final_fastq_reads}.untrimmed \
+      -i full_solexa_dataset_${db_name}_${col_name}_${bac_id}_hybrid_edited_refs_reduced_solexa_include_list_sorted.txt \
+      -f full_solexa_dataset_${final_fastq_reads}.untrimmed
+
+    echo "INFO: running clc_ref_assemble_long for [${db_name}_${col_name}_${bac_id}]"
+
+    set input_read_files = ""
+    foreach key (`ls -1 ${sample_data_merged_sff} | grep "\.[ACGT][ACGT][ACGT][ACGT]\." | cut -d '.' -f 2 | sort -u`)
+      set input_read_files = `echo "${input_read_files} -q ${final_sff_reads:r}.${key}.sff"`
+    end
+
+    if ( `cat ${final_fasta_reads} | wc -l` > 0 ) then
+      set input_read_files = `echo "${input_read_files} -q ${final_fasta_reads}"`
+    endif
+
+    if ( `cat ${final_fastq_reads} | wc -l` > 0 ) then
+      set input_read_files = `echo "${input_read_files} -q ${final_fastq_reads}"`
+    endif
+
+    clc_ref_assemble_long \
+      -s 0.95 \
+      -o ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.cas \
+      ${input_read_files} \
+      -d ${best_edited_refs_file}
+
+    find_variations \
+      -a ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.cas \
+      -c 2 \
+      -o ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs \
+      -v \
+      -f 0.2 >& ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs_find_variations.log
+
+    if ( ${flu_a} > 0 ) then
+      echo "INFO: running fluValidator for [${db_name}_${col_name}_${bac_id}]"
+      /usr/local/devel/VIRIFX/software/Elvira/bin/fluValidator \
+        --fasta ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs > \
+        ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs.fluValidator 
+    endif
+  popd >& /dev/null
+end
+
+################### REVIEW FLU VALIDATOR RESULTS FOR CLC DATA #############################
+
+set sispa_pool_name = 20110707_104xMPA_2xMG_1xSW_6xNORV
+set sispa_pool_name = 20110715_1_61xMPS
+set sispa_pool_name = 20110715_2_55xMPS
+set sispa_pool_name = 20110721_47xMPA_6xSB
+set sispa_pool_name = 20110815_47xVEEV_6xARBO_3xJC_1xJEV_1xYFV
+set sispa_pool_name = 20110816_65xMPV_7xRSV
+
+
+set project_root = /usr/local/projects/VHTNGS
+set barcode_data_root = ${project_root}/barcode_data
+set sample_data_root = ${project_root}/sample_data_new
+
+set barcode_data_dir = ${barcode_data_root}/${sispa_pool_name}
+set barcode_file_name = ${barcode_data_dir}/barcode_metadata_from_GLK.txt
+foreach bc_rec ( `cat ${barcode_file_name} | grep -v "POSCTRL" | tr ' ' '_' | tr '\t' ':' | cut -d ':' -f 3,6,7 | sort -u | grep -v "LASKEN" | grep -v "givtest"` )
+  set bac_id   = `echo "${bc_rec}" | cut -d ':' -f 1`
+  set db_name  = `echo "${bc_rec}" | cut -d ':' -f 2`
+  set col_name = `echo "${bc_rec}" | cut -d ':' -f 3`
+
+set triplet_file = /home/tstockwe/for_vhtngs/20111114_bad_refs_tuples.txt
+set triplet_file = /home/tstockwe/for_vhtngs/20111117_bad_refs_tuples.txt
+
+foreach bc_rec ( `cat ${triplet_file} | tr ',' ':' | sort -u` )
+  set bac_id   = `echo "${bc_rec}" | cut -d ':' -f 3`
+  set db_name  = `echo "${bc_rec}" | cut -d ':' -f 1`
+  set col_name = `echo "${bc_rec}" | cut -d ':' -f 2`
+
+  echo "INFO: examining sample tuple [${db_name}/${col_name}/${bac_id}]"
+  set sample_data = ${sample_data_root}/${db_name}/${col_name}/${bac_id}
+  set sample_mapping_dir = ${sample_data}/mapping
+  echo "INFO: pushd to [${sample_mapping_dir}]"
+  if ( -d ${sample_mapping_dir} ) then
+  pushd ${sample_mapping_dir} >& /dev/null
+    if ( -e ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs.fluValidator ) then
+      cat ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs.fluValidator 
+    else if ( -e ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs ) then
+      echo "INFO: running fluValidator for [${db_name}_${col_name}_${bac_id}]"
+      /usr/local/devel/DAS/software/ElviraStaging/bin/fluValidator \
+        --fasta ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs > \
+        ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs.fluValidator 
+      cat ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs.fluValidator 
+    else 
+      echo "ERROR: running fluValidator for [${db_name}_${col_name}_${bac_id}], [${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs] does not exist"
+    endif
+    sleep 1
+  popd >& /dev/null
+  else
+    echo "WARNING: [${sample_mapping_dir}] not visible from this node"
+  endif
+end
+
+################### GENERATE CAS2CONSED DATA #############################
+
+set sispa_pool_name = 20110707_104xMPA_2xMG_1xSW_6xNORV
+set sispa_pool_name = 20110715_1_61xMPS
+set sispa_pool_name = 20110715_2_55xMPS
+set sispa_pool_name = 20110721_47xMPA_6xSB
+set sispa_pool_name = 20110815_47xVEEV_6xARBO_3xJC_1xJEV_1xYFV
+set sispa_pool_name = 20110816_65xMPV_7xRSV
+
+
+set project_root = /usr/local/projects/VHTNGS
+set barcode_data_root = ${project_root}/barcode_data
+set sample_data_root = ${project_root}/sample_data_new
+
+set barcode_data_dir = ${barcode_data_root}/${sispa_pool_name}
+set barcode_file_name = ${barcode_data_dir}/barcode_metadata_from_GLK.txt
+
+cat $barcode_file_name | \
+  grep -v "POSCTRL" | \
+  tr ' ' '_' | \
+  tr '\t' ':' | \
+  cut -d ':' -f 3,6,7 | \
+  sort -u | \
+  gawk -F':' '{printf("%s,%s,%s\n",$2,$3,$1);}' > ~/for_vhtngs/${sispa_pool_name}_tuples.txt
+
+set triplet_file = /home/tstockwe/for_vhtngs/${sispa_pool_name}_tuples.txt
+
+set triplet_file = /home/tstockwe/for_vhtngs/20111114_bad_refs_tuples.txt
+set triplet_file = /home/tstockwe/for_vhtngs/20111117_bad_refs_tuples.txt
+
+
+/usr/local/devel/VIRIFX/software/Elvira/bin/gridMultiViralCas2ConsedPipeline \
+  -in ${triplet_file} \
+  -project_code 810001
+
+
+/usr/local/devel/VIRIFX/software/bin/flu_validate2_cas2consed_ace2_assemblies.csh ${triplet_file}
+
+
+
+
+################### REVIEW FLU VALIDATOR RESULTS FOR CAS2CONSED DATA #############################
+set sispa_pool_name = 20090205_HIsamples6to100
+set sispa_pool_name = 20090205_34xDW_5xHI_2xUNKNOWN_samples
+set sispa_pool_name = 20090901_20xDW09_3xCC_12xSW_samples
+set sispa_pool_name = 20091005_AVIAN113
+set sispa_pool_name = 20091215_MCEIRSsamples1to50
+set sispa_pool_name = 20100305_1_86xAK_1xSW
+set sispa_pool_name = 20100305_2_32xAK_24xCOH_1xMCWS_2xKHBAT_1xSW
+set sispa_pool_name = 20100416_B_57xMCE_14xAK_5xCOH_4xVEEV_3xINS_1xCC_1xWKS
+set sispa_pool_name = 20110202_68xWBC_11xCA_2xMCE_2xMPV_1xAGS_1xEB_1x_FBS_1xRFS
+set sispa_pool_name = 20110707_104xMPA_2xMG_1xSW_6xNORV
+set sispa_pool_name = 20110715_1_61xMPS
+set sispa_pool_name = 20110715_2_55xMPS
+set sispa_pool_name = 20110721_47xMPA_6xSB
+set sispa_pool_name = 20110815_47xVEEV_6xARBO_3xJC_1xJEV_1xYFV
+set sispa_pool_name = 20110816_65xMPV_7xRSV
+
+set project_root = /usr/local/projects/VHTNGS
+set barcode_data_root = ${project_root}/barcode_data
+set sample_data_root = ${project_root}/sample_data_new
+set barcode_data_dir = ${barcode_data_root}/${sispa_pool_name}
+set barcode_file_name = ${barcode_data_dir}/barcode_metadata_from_GLK.txt
+
+if ( -e ${sispa_pool_name}_status.csv ) then
+  rm ${sispa_pool_name}_status.csv
+endif
+touch ${sispa_pool_name}_status.csv
+if ( -e ${sispa_pool_name}_status.log ) then
+  rm ${sispa_pool_name}_status.log 
+endif
+touch ${sispa_pool_name}_status.log 
+
+foreach bc_rec ( `cat ${barcode_file_name} | tr ' ' '_' | tr '\t' ':' | cut -d ':' -f 3,6,7 | sort -u` )
+  set bac_id   = `echo "${bc_rec}" | cut -d ':' -f 1`
+  set db_name  = `echo "${bc_rec}" | cut -d ':' -f 2`
+  set col_name = `echo "${bc_rec}" | cut -d ':' -f 3`
+  set sample_data = ${sample_data_root}/${db_name}/${col_name}/${bac_id}
+  set sample_mapping_dir = ${sample_data}/mapping
+
+  if ( -e ${sample_mapping_dir}/consed_with_sanger/${db_name}_${col_name}_${bac_id}.ace.2.consensus.fasta.fluValidator ) then
+      echo "\n\nINFO: ${db_name}_${col_name}_${bac_id}.ace.2.consensus.fasta.fluValidator for sample [${db_name}_${col_name}_${bac_id}]"
+      cat ${sample_mapping_dir}/consed_with_sanger/${db_name}_${col_name}_${bac_id}.ace.2.consensus.fasta.fluValidator
+      echo "\n\nINFO: ${db_name}_${col_name}_${bac_id}.ace.2.consensus.fasta.fluValidator for sample [${db_name}_${col_name}_${bac_id}]" >> ${sispa_pool_name}_status.log
+      cat ${sample_mapping_dir}/consed_with_sanger/${db_name}_${col_name}_${bac_id}.ace.2.consensus.fasta.fluValidator >> ${sispa_pool_name}_status.log
+      set valid_cnt = `cat ${sample_mapping_dir}/consed_with_sanger/${db_name}_${col_name}_${bac_id}.ace.2.consensus.fasta.fluValidator | grep " VALID " | wc -l`
+      set contig_cnt = `cat ${sample_mapping_dir}/consed_with_sanger/${db_name}_${col_name}_${bac_id}.ace.2.consensus.fasta.fluValidator | grep "Contig " | wc -l`
+      if ( ${valid_cnt} == 8 && ${contig_cnt} == 8 ) then
+        echo "VALID,${valid_cnt},${contig_cnt},${db_name},${col_name},${bac_id}"
+        echo "VALID,${valid_cnt},${contig_cnt},${db_name},${col_name},${bac_id}" >> ${sispa_pool_name}_status.log
+        echo "VALID,${valid_cnt},${contig_cnt},${db_name},${col_name},${bac_id}" >> ${sispa_pool_name}_status.csv
+      else
+        echo "DRAFT,${valid_cnt},${contig_cnt},${db_name},${col_name},${bac_id}"
+        echo "DRAFT,${valid_cnt},${contig_cnt},${db_name},${col_name},${bac_id}" >> ${sispa_pool_name}_status.log
+        echo "DRAFT,${valid_cnt},${contig_cnt},${db_name},${col_name},${bac_id}" >> ${sispa_pool_name}_status.csv
+      endif
+    else
+      echo "WARNING: NO ${db_name}_${col_name}_${bac_id}.ace.2.consensus.fasta.fluValidator FILE FOUND FOR SAMPLE [${db_name}_${col_name}_${bac_id}]"
+      echo "WARNING: NO ${db_name}_${col_name}_${bac_id}.ace.2.consensus.fasta.fluValidator FILE FOUND FOR SAMPLE [${db_name}_${col_name}_${bac_id}]" >> ${sispa_pool_name}_status.log
+    endif
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,56 @@
+csh
+source /usr/local/sge_current/jcvi/common/settings.csh
+setenv RUBYLIB /usr/local/devel/DAS/users/tstockwe/Ruby/Tools/Bio
+setenv PATH /usr/local/packages/clc-ngs-cell:/usr/local/packages/clc-bfx-cell:${PATH}
+use emboss50
+umask 002
+
+set sispa_pool_name = 20110303_58xRTV_25xGCV
+
+set project_root = /usr/local/projects/VHTNGS
+set sample_data_root = ${project_root}/sample_data_new
+set barcode_data_root = ${project_root}/barcode_data
+set barcode_data_dir = ${barcode_data_root}/${sispa_pool_name}
+set barcode_file_name = ${barcode_data_dir}/barcode_metadata_from_GLK.txt
+
+foreach bc_rec ( `cat ${barcode_file_name} | grep -v "POSCTRL" | tr ' ' '_' | tr '\t' ':' | cut -d ':' -f 3,6,7 | sort -u | grep -v "LASKEN" | grep -v "givtest"` )
+  set bac_id   = `echo "${bc_rec}" | cut -d ':' -f 1`
+  set db_name  = `echo "${bc_rec}" | cut -d ':' -f 2`
+  set col_name = `echo "${bc_rec}" | cut -d ':' -f 3`
+  set sample_data = ${sample_data_root}/${db_name}/${col_name}/${bac_id}
+  set sample_data_merged_solexa = ${sample_data}/merged_solexa
+  set sample_data_merged_sff = ${sample_data}/merged_sff
+  set sample_data_merged_sanger = ${sample_data}/merged_sanger
+  set sample_data_merged_solexa_file = ${sample_data_merged_solexa}/${db_name}_${col_name}_${bac_id}.fastq
+  set sample_data_merged_sff_file = ${sample_data_merged_sff}/${db_name}_${col_name}_${bac_id}.sff
+  set sample_data_merged_sanger_file = ${sample_data_merged_sanger}/${db_name}_${col_name}_${bac_id}.fasta
+  set sample_data_denovo_dir = ${sample_data}/clc_denovo
+  echo "INFO:  clc_novo_assemble for [${db_name}_${col_name}_${bac_id}]"
+  mkdir ${sample_data_denovo_dir}
+  pushd ${sample_data_denovo_dir} >& /dev/null
+    ln -s /usr/local/packages/clc-bfx-cell/license.properties ./
+    set input_read_files = ""
+    if ( -e ${sample_data_merged_sanger_file} ) then
+      if ( `cat ${sample_data_merged_sanger_file} | wc -l` > 0 ) then
+        set input_read_files = `echo "${input_read_files} -q ${sample_data_merged_sanger_file}"`
+      endif
+    endif
+    foreach key (`ls -1 ${sample_data_merged_sff} | grep "\.[ACGT][ACGT][ACGT][ACGT]\." | cut -d '.' -f 2 | sort -u`)
+      set input_read_files = `echo "${input_read_files} -q ${sample_data_merged_sff_file:r}.${key}.sff"`
+    end
+    if ( `cat ${sample_data_merged_solexa_file} | wc -l` > 0 ) then
+      set input_read_files = `echo "${input_read_files} -q ${sample_data_merged_solexa_file}"`
+    endif
+    clc_novo_assemble \
+      -o ${db_name}_${col_name}_${bac_id}_contigs.fasta \
+      ${input_read_files} \
+      >& ${db_name}_${col_name}_${bac_id}_clc_novo_assemble.log
+    set contig_count = `grep "^>" ${db_name}_${col_name}_${bac_id}_contigs.fasta | wc -l`
+    echo "INFO:  clc_novo_assemble produced [${contig_count}] contig(s) for [${db_name}_${col_name}_${bac_id}]"
+  popd >& /dev/null
+end
+
+popd >& /dev/null
+
+exit
+

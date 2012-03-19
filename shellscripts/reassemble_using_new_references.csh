@@ -1,0 +1,357 @@
+#!/bin/csh
+setenv RUBYLIB /usr/local/devel/DAS/users/tstockwe/Ruby/Tools/Bio
+setenv PATH /usr/local/packages/clc-ngs-cell:/usr/local/packages/clc-bfx-cell:${PATH}
+use emboss50
+umask 002
+
+set project_root = /usr/local/projects/VHTNGS
+set sample_data_root = ${project_root}/sample_data_new
+
+foreach bc_rec ( `cat $1 | tr ',' ':' | tr -d '\r' | tr -d ' ' | sort -u` )
+  set bac_id   = `echo "${bc_rec}" | cut -d ':' -f 3`
+  set db_name  = `echo "${bc_rec}" | cut -d ':' -f 1`
+  set col_name = `echo "${bc_rec}" | cut -d ':' -f 2`
+  switch ($db_name)
+    case giv:
+      echo "Using Influenza A reference data for database [${db_name}]"
+      set ref_dir = /usr/local/projects/VHTNGS/reference_data/influenza_a_virus
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/influenza_a_virus_full_length_NT
+      set segments = "HA MP NA NP NS PA PB1 PB2"
+      set seg_cov = "HA:175000 MP:100000 NA:145000 NP:155000 NS:89000 PA:220000 PB1:235000 PB2:235000"
+      set flu_a = 1
+    breaksw
+    case giv3:
+      echo "Using Influenza A reference data for database [${db_name}]"
+      set ref_dir = /usr/local/projects/VHTNGS/reference_data/influenza_a_virus
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/influenza_a_virus_full_length_NT
+      set segments = "HA MP NA NP NS PA PB1 PB2"
+      set seg_cov = "HA:175000 MP:100000 NA:145000 NP:155000 NS:89000 PA:220000 PB1:235000 PB2:235000"
+      set flu_a = 1
+    breaksw
+    case piv:
+      echo "Using Influenza A reference data for database [${db_name}]"
+      set ref_dir = /usr/local/projects/VHTNGS/reference_data/influenza_a_virus
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/influenza_a_virus_full_length_NT
+      set segments = "HA MP NA NP NS PA PB1 PB2"
+      set seg_cov = "HA:175000 MP:100000 NA:145000 NP:155000 NS:89000 PA:220000 PB1:235000 PB2:235000"
+      set flu_a = 1
+    breaksw
+    case swiv:
+      echo "Using Influenza A reference data for database [${db_name}]"
+      set ref_dir = /usr/local/projects/VHTNGS/reference_data/influenza_a_virus
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/influenza_a_virus_full_length_NT
+      set segments = "HA MP NA NP NS PA PB1 PB2"
+      set seg_cov = "HA:175000 MP:100000 NA:145000 NP:155000 NS:89000 PA:220000 PB1:235000 PB2:235000"
+      set flu_a = 1
+    breaksw
+    case barda:
+      echo "Using Influenza A reference data for database [${db_name}]"
+      set ref_dir = /usr/local/projects/VHTNGS/reference_data/influenza_a_virus
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/influenza_a_virus_full_length_NT
+      set segments = "HA MP NA NP NS PA PB1 PB2"
+      set seg_cov = "HA:175000 MP:100000 NA:145000 NP:155000 NS:89000 PA:220000 PB1:235000 PB2:235000"
+      set flu_a = 1
+    breaksw
+    case rtv:
+      echo "Using Rotavirus reference data for database [${db_name}]"
+      set ref_dir      = /usr/local/projects/VHTNGS/reference_data/rota_virus
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/rota_virus_full_length_NT
+      set segments = "VP1 VP2 VP3 VP4 NSP1 VP6 NSP3 NSP2 VP7 NSP4 NSP5"
+      set seg_cov = "VP1:326700 VP2:268600 VP3:255000 VP4:232400 NSP1:151800 VP6:132300 NSP3:104100 NSP2:102200 VP7:103000 NSP4:70800 NSP5:62900"
+      set flu_a = 0
+    breaksw
+    case gcv:
+      echo "Using Coronavirus reference data for database [${db_name}]"
+      set ref_dir      = /usr/local/projects/VHTNGS/reference_data/corona_virus
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/corona_virus_full_length_NT
+      set segments = "MAIN"
+      set seg_cov = "MAIN:3000000"
+      set flu_a = 0
+    breaksw
+    case veev:
+      echo "Using VEEV reference data for database [${db_name}]"
+      set ref_dir      = /usr/local/projects/VHTNGS/reference_data/veev
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/veev_full_length_NT
+      set segments = "MAIN"
+      set seg_cov = "MAIN:1200000"
+      set flu_a = 0
+    breaksw
+    case hadv:
+      echo "Using HADV reference data for database [${db_name}]"
+      set ref_dir      = /usr/local/projects/VHTNGS/reference_data/hadv
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/hadv_full_length_NT
+      set segments = "MAIN"
+      set seg_cov = "MAIN:4500000"
+      set flu_a = 0
+    breaksw
+    case mpv:
+      echo "Using MPV reference data for database [${db_name}]"
+      set ref_dir      = /usr/local/projects/VHTNGS/reference_data/mpv
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/mpv_full_length_NT
+      set segments = "MAIN"
+      set seg_cov = "MAIN:1335000"
+      set flu_a = 0
+    breaksw
+    case norv:
+      echo "Using NORV reference data for database [${db_name}]"
+      set ref_dir      = /usr/local/projects/VHTNGS/reference_data/norv
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/norv_full_length_NT
+      set segments = "MAIN"
+      set seg_cov = "MAIN:774600"
+      set flu_a = 0
+    breaksw
+    case vzv:
+      echo "Using VZV reference data for database [${db_name}]"
+      set ref_dir      = /usr/local/projects/VHTNGS/reference_data/vzv
+      set blast_db_dir = /usr/local/projects/VHTNGS/reference_data/vzv_full_length_NT
+      set segments = "MAIN"
+      set seg_cov = "MAIN:12500000"
+      set flu_a = 0
+    breaksw
+  endsw
+
+  echo "INFO: processing data for [${db_name}/${col_name}/${bac_id}]"
+
+  set sample_data = ${sample_data_root}/${db_name}/${col_name}/${bac_id}
+  set sample_data_merged_solexa = ${sample_data}/merged_solexa
+  set sample_data_merged_sff = ${sample_data}/merged_sff
+  set sample_data_merged_sanger = ${sample_data}/merged_sanger
+  set sample_data_merged_solexa_file = ${sample_data_merged_solexa}/${db_name}_${col_name}_${bac_id}.fastq
+  set sample_data_merged_solexa_file_t = ${sample_data_merged_solexa}/${db_name}_${col_name}_${bac_id}.fastq.trimpoints
+  set sample_data_merged_solexa_file_u = ${sample_data_merged_solexa}/${db_name}_${col_name}_${bac_id}.fastq.untrimmed
+  set sample_data_merged_sff_file = ${sample_data_merged_sff}/${db_name}_${col_name}_${bac_id}.sff
+  set sample_data_merged_sanger_file = ${sample_data_merged_sanger}/${db_name}_${col_name}_${bac_id}.fasta
+
+  set tblastx_outdir = ${sample_data}/tblastx_output
+  set noninter_chimera_list = ${tblastx_outdir}/noninter_chimera_reads.uaccno_list
+  set inter_chimera_list = ${tblastx_outdir}/inter_chimera_reads.uaccno_list
+  set seg_best_ref_dir = ${sample_data}/reference_fasta
+  set best_refs_file = ${seg_best_ref_dir}/reference.fasta
+  set non_chimera_list = ${tblastx_outdir}/nonchimera_reads.uaccno_list
+  set deconvolved_sff = ${sample_data_merged_sff}/${db_name}_${col_name}_${bac_id}_nonchimera.sff
+
+  echo "INFO: mapping viral sequences for [${db_name}/${col_name}/${bac_id}]"
+  set sample_mapping_dir = ${sample_data}/mapping
+  if ( -d ${sample_mapping_dir} ) then
+  else
+    mkdir -p ${sample_mapping_dir}
+  endif
+
+  pushd ${sample_mapping_dir} >& /dev/null
+    ln -s /usr/local/packages/clc-bfx-cell/license.properties ./
+    rm *.extracted.edited.fasta
+    echo "INFO: using clc_ref_assemble_long to find sff SNPs for [${db_name}_${col_name}_${bac_id}]"
+
+    set input_read_files = ""
+    foreach key (`ls -1 ${sample_data_merged_sff} | grep "\.[ACGT][ACGT][ACGT][ACGT]\." | cut -d '.' -f 2 | sort -u`)
+      set input_read_files = `echo "${input_read_files} -q ${deconvolved_sff:r}.${key}.sff"`
+    end
+    clc_ref_assemble_long \
+      -s 0.95 \
+      -o ${db_name}_${col_name}_${bac_id}_454_only_gb_refs.cas \
+      ${input_read_files} \
+      -d ${best_refs_file}
+    find_variations \
+      -a ${db_name}_${col_name}_${bac_id}_454_only_gb_refs.cas \
+      -c 2 \
+      -o ${db_name}_${col_name}_${bac_id}_454_only_gb_refs.new_contigs \
+      -v \
+      -f 0.2 >& ${db_name}_${col_name}_${bac_id}_454_only_gb_refs_find_variations.log
+    cat ${db_name}_${col_name}_${bac_id}_454_only_gb_refs_find_variations.log | \
+      grep -v Nochange | \
+      cut -d ':' -f 1 | \
+      gawk '{if($0 ~ /^[A-Z]/){s=$1;n=0; } \
+             else if ($0 ~ /Difference/){l=$1; c=$5; n=0; printf("%s:%d:%s\n", s, l, c);}}' > \
+      ${db_name}_${col_name}_${bac_id}_454_only_gb_refs_find_variations.log.reduced
+
+    touch ${db_name}_${col_name}_${bac_id}_solexa_only_gb_refs_find_variations.log.reduced
+    if ( `cat ${sample_data_merged_solexa_file} | wc -l` > 0 ) then
+      echo "INFO: using clc_ref_assemble_long to find fastq SNPs for [${db_name}_${col_name}_${bac_id}]"
+      clc_ref_assemble_long \
+        -s 0.95 \
+        -o ${db_name}_${col_name}_${bac_id}_solexa_only_gb_refs.cas \
+        -q ${sample_data_merged_solexa_file} \
+        -d ${best_refs_file}
+      find_variations \
+        -a ${db_name}_${col_name}_${bac_id}_solexa_only_gb_refs.cas \
+        -c 2 \
+        -o ${db_name}_${col_name}_${bac_id}_solexa_only_gb_refs.new_contigs \
+        -v \
+        -f 0.2 >& ${db_name}_${col_name}_${bac_id}_solexa_only_gb_refs_find_variations.log
+      cat ${db_name}_${col_name}_${bac_id}_solexa_only_gb_refs_find_variations.log | \
+        grep -v Nochange | \
+        cut -d ':' -f 1 | \
+        gawk '{if($0 ~ /^[A-Z]/){s=$1;n=0; } \
+               else if ($0 ~ /Difference/){l=$1; c=$5; n=0; printf("%s:%d:%s\n", s, l, c);}}' > \
+        ${db_name}_${col_name}_${bac_id}_solexa_only_gb_refs_find_variations.log.reduced
+    endif
+
+    if ( `cat ${db_name}_${col_name}_${bac_id}_solexa_only_gb_refs_find_variations.log.reduced | wc -l` > 0 ) then
+      sdiff \
+        ${db_name}_${col_name}_${bac_id}_454_only_gb_refs_find_variations.log.reduced \
+        ${db_name}_${col_name}_${bac_id}_solexa_only_gb_refs_find_variations.log.reduced | \
+        grep -v "[<|>]" | \
+        cut -f 1 > \
+          ${db_name}_${col_name}_${bac_id}_454_solexa_common_gb_refs_find_variations.log.reduced
+    else
+      cp \
+        ${db_name}_${col_name}_${bac_id}_454_only_gb_refs_find_variations.log.reduced \
+        ${db_name}_${col_name}_${bac_id}_454_solexa_common_gb_refs_find_variations.log.reduced
+    endif 
+
+    echo "INFO: building edited references based on common sff and fastq SNPs for [${db_name}_${col_name}_${bac_id}]"
+    foreach seg ( `grep "^>" ${best_refs_file} | cut -d ' ' -f 1 | cut -c 2-` )
+      nthseq -sequence ${best_refs_file} \
+        -number `grep "^>" ${best_refs_file} | cut -d ' ' -f 1 | cut -c 2- | grep -n ${seg} | cut -d ':' -f 1` \
+        -outseq ${db_name}_${col_name}_${bac_id}_${seg}.extracted >& /dev/null
+      cat ${db_name}_${col_name}_${bac_id}_454_solexa_common_gb_refs_find_variations.log.reduced | \
+        grep ${seg} | \
+        cut -d ':' -f 2-3 | \
+        tr '\n ' ' ' > ${db_name}_${col_name}_${bac_id}_${seg}.edits
+      /usr/local/devel/DAS/software/resequencing/prod/data_analysis/delta2seq.pl \
+        -r ${db_name}_${col_name}_${bac_id}_${seg}.extracted \
+        -f ${db_name}_${col_name}_${bac_id}_${seg}.edits \
+        -q ${db_name}_${col_name}_${bac_id}_${seg}.extracted.edited
+      grep "^>" ${db_name}_${col_name}_${bac_id}_${seg}.extracted > \
+        ${db_name}_${col_name}_${bac_id}_${seg}.extracted.edited.fasta
+      grep -v "^>" ${db_name}_${col_name}_${bac_id}_${seg}.extracted.edited >> \
+        ${db_name}_${col_name}_${bac_id}_${seg}.extracted.edited.fasta
+    end
+    set best_edited_refs_file = ${db_name}_${col_name}_${bac_id}_reference_edited.fasta
+    cat ${db_name}_${col_name}_${bac_id}_*.extracted.edited.fasta > \
+      ${best_edited_refs_file}
+
+    echo "INFO: using 454 mapper for final chimera check for [${db_name}_${col_name}_${bac_id}]"
+
+    if ( -d 454_mapping_best_refs_chimera_check ) then
+      rm -Rf 454_mapping_best_refs_chimera_check
+    endif
+    newMapping 454_mapping_best_refs_chimera_check
+    setRef 454_mapping_best_refs_chimera_check ${best_edited_refs_file}
+
+    foreach key (`ls -1 ${sample_data_merged_sff} | grep "\.[ACGT][ACGT][ACGT][ACGT]\." | cut -d '.' -f 2 | sort -u`)
+      addRun 454_mapping_best_refs_chimera_check ${deconvolved_sff:r}.${key}.sff
+    end
+
+    if ( `cat ${sample_data_merged_solexa_file}.fasta | wc -l` > 0 ) then
+      addRun 454_mapping_best_refs_chimera_check ${sample_data_merged_solexa_file}.fasta
+    endif
+    runProject -no 454_mapping_best_refs_chimera_check >& runProject_454_mapping_best_refs_chimera_check.log
+    grep "Chimeric" 454_mapping_best_refs_chimera_check/mapping/454ReadStatus.txt | \
+      gawk '{print $1}' > exclude_list.txt
+
+    cat ${sample_data_merged_solexa_file_t} | gawk -F'\t' '{if(($2!=29)||($3!=100)){print $1;}}' >> exclude_list.txt
+
+    set final_sff_reads = ${db_name}_${col_name}_${bac_id}_final.sff
+    set final_fastq_reads = ${db_name}_${col_name}_${bac_id}_final.fastq
+    set final_fasta_reads = ${db_name}_${col_name}_${bac_id}_final.fasta
+
+    if ( `cat ${sample_data_merged_sanger_file} | wc -l` > 0 ) then
+      cp ${sample_data_merged_sanger_file} ${final_fasta_reads}
+      cp ${sample_data_merged_sanger_file}.untrimmed ${final_fasta_reads}.untrimmed
+      cp ${sample_data_merged_sanger_file}.trimpoints ${final_fasta_reads}.trimpoints
+    endif
+
+    foreach key (`ls -1 ${sample_data_merged_sff} | grep "\.[ACGT][ACGT][ACGT][ACGT]\." | cut -d '.' -f 2 | sort -u`)
+      sfffile \
+        -o ${final_sff_reads:r}.${key}.sff \
+        -e exclude_list.txt \
+        ${deconvolved_sff:r}.${key}.sff
+    end
+
+    touch ${final_fastq_reads}
+    touch ${final_fastq_reads}.trimpoints
+    touch ${final_fastq_reads}.untrimmed
+
+    if ( `cat ${sample_data_merged_solexa_file} | wc -l` > 0 ) then
+      /usr/local/devel/DAS/software/JavaCommon2/fastQfile.pl \
+        -o ${final_fastq_reads} \
+        -e exclude_list.txt \
+        ${sample_data_merged_solexa_file}
+
+      cat ${final_fastq_reads} | \
+        gawk '{t=NR % 4;\
+               if(t==1){\
+                 if(length(sid) > 0 ) {printf("%s\t%s\t%s\t%s\n", sid,s,qid,q)};\
+                 sid=substr($0,2);\
+               }\
+               else if (t==2){s=$0;}\
+               else if (t==3){qid=substr($0,2);}\
+               else if (t==0){q=$0;}\
+              }\
+              END {\
+                if(length(sid) > 0 ) {printf("%s\t%s\t%s\t%s\n", sid,s,qid,q)};\
+                sid=substr($0,2);\
+              }' | \
+        sort | \
+        gawk -F'\t' '{printf("@%s\n%s\n+%s\n%s\n", $1, $2, $3, $4);}' > ${final_fastq_reads}.sorted
+      mv ${final_fastq_reads} ${final_fastq_reads}.unsorted
+      mv ${final_fastq_reads}.sorted ${final_fastq_reads}
+
+      grep "^@" ${final_fastq_reads} | cut -c 2- | sort > include_list.txt
+      join -1 1 -2 1 \
+        include_list.txt \
+        ${sample_data_merged_solexa_file_t} | \
+        tr ' ' '\t' > ${final_fastq_reads}.trimpoints
+
+      /usr/local/devel/DAS/software/JavaCommon2/fastQfile.pl \
+        -o ${final_fastq_reads}.untrimmed \
+        -i include_list.txt \
+        ${sample_data_merged_solexa_file_u}
+
+      cat ${final_fastq_reads}.untrimmed | \
+        gawk '{t=NR % 4;\
+               if(t==1){\
+                 if(length(sid) > 0 ) {printf("%s\t%s\t%s\t%s\n", sid,s,qid,q)};\
+                 sid=substr($0,2);\
+               }\
+               else if (t==2){s=$0;}\
+               else if (t==3){qid=substr($0,2);}\
+               else if (t==0){q=$0;}\
+              }\
+              END {\
+                if(length(sid) > 0 ) {printf("%s\t%s\t%s\t%s\n", sid,s,qid,q)};\
+                sid=substr($0,2);\
+              }' | \
+        sort | \
+        gawk -F'\t' '{printf("@%s\n%s\n+%s\n%s\n", $1, $2, $3, $4);}' > ${final_fastq_reads}.untrimmed.sorted
+      mv ${final_fastq_reads}.untrimmed.sorted ${final_fastq_reads}.untrimmed
+    endif
+
+    echo "INFO: running clc_ref_assemble_long for [${db_name}_${col_name}_${bac_id}]"
+
+    set input_read_files = ""
+    foreach key (`ls -1 ${sample_data_merged_sff} | grep "\.[ACGT][ACGT][ACGT][ACGT]\." | cut -d '.' -f 2 | sort -u`)
+      set input_read_files = `echo "${input_read_files} -q ${final_sff_reads:r}.${key}.sff"`
+    end
+
+    if ( `cat ${final_fasta_reads} | wc -l` > 0 ) then
+      set input_read_files = `echo "${input_read_files} -q ${final_fasta_reads}"`
+    endif
+
+    if ( `cat ${final_fastq_reads} | wc -l` > 0 ) then
+      set input_read_files = `echo "${input_read_files} -q ${final_fastq_reads}"`
+    endif
+
+    clc_ref_assemble_long \
+      -s 0.95 \
+      -o ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.cas \
+      ${input_read_files} \
+      -d ${best_edited_refs_file}
+
+    find_variations \
+      -a ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.cas \
+      -c 2 \
+      -o ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs \
+      -v \
+      -f 0.2 >& ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs_find_variations.log
+
+    if ( ${flu_a} > 0 ) then
+      echo "INFO: running fluValidator for [${db_name}_${col_name}_${bac_id}]"
+      /usr/local/devel/DAS/software/ElviraStaging/bin/fluValidator \
+        --fasta ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs > \
+        ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.new_contigs.fluValidator 
+    endif
+  popd >& /dev/null
+end
+

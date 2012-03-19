@@ -1,0 +1,87 @@
+grep "^>" /usr/local/projects/GIV/Influenza_full_length_NT/NA_full_length_NT_complete.fa | \
+  cut -d '/' -f 1,4 | \
+  sed -e 's/\/H[0-9][0-9]/\/H/' | \
+  sed -e 's/\/H[0-9]/\/H/' | \
+  sed -e 's/\/H/\//' | \
+  sed -e 's/\/N/N/' | \
+  sed -e 's/\/Mixed/Mixed/' | \
+  cut -c 2- | \
+  sort > /usr/local/projects/GIV/Influenza_full_length_NT/NA_gi_to_subtype_map.txt
+
+grep "^>" /usr/local/projects/GIV/Influenza_full_length_NT/HA_full_length_NT_complete.fa | \
+  cut -d '/' -f 1,4 | \
+  sed -e 's/\N[0-9]$//' | \
+  sed -e 's/\N$//' | \
+  sed -e 's/\/H/H/'| \
+  sed -e 's/\/Mixed/Mixed/' | \
+  cut -c 2- | \
+  sort > /usr/local/projects/GIV/Influenza_full_length_NT/HA_gi_to_subtype_map.txt
+
+
+
+foreach c ( `ls -1 */assembly_by_segment/HA/HA_100x_contigs.fasta` )
+  set num_ha_subtypes = \
+    `blastall -p blastn -d /usr/local/projects/GIV/Influenza_full_length_NT/HA_full_length_NT_complete.fa -b 1 -v 1 -m 8 -i ${c} | \
+     cut -f 2 | \
+     sort -u | \
+     join - /usr/local/projects/GIV/Influenza_full_length_NT/HA_gi_to_subtype_map.txt | \
+     cut -d ' ' -f 2 | \
+     sort -u | \
+     wc -l`
+  echo "INFO:  [${c}] shows [${num_ha_subtypes}] HA subtypes"
+  if ( ${num_ha_subtypes} > 1 ) then
+    set subtype_list = `blastall -p blastn -d /usr/local/projects/GIV/Influenza_full_length_NT/HA_full_length_NT_complete.fa -b 1 -v 1 -m 8 -i ${c} | \
+     cut -f 2 | \
+     sort -u | \
+     join - /usr/local/projects/GIV/Influenza_full_length_NT/HA_gi_to_subtype_map.txt | \
+     cut -d ' ' -f 2 | \
+     sort -u | \
+     tr '\n' ',' | sed -e 's/,$//' `
+    echo "${subtype_list}"
+  endif
+  
+end
+
+foreach c ( `ls -1 */assembly_by_segment/HA/HA_100x_contigs.fasta` )
+  set num_ha_subtypes = \
+    `blastall -p blastn -d /usr/local/projects/GIV/Influenza_full_length_NT/HA_full_length_NT_complete.fa -b 1 -v 1 -m 8 -i ${c} | \
+     cut -f 2 | \
+     sort -u | \
+     join - /usr/local/projects/GIV/Influenza_full_length_NT/HA_gi_to_subtype_map.txt | \
+     cut -d ' ' -f 2 | \
+     sort -u | \
+     wc -l`
+  if ( ${num_ha_subtypes} > 1 ) then
+  echo "INFO:  [${c}] shows [${num_ha_subtypes}] HA subtypes"
+    set subtype_list = `blastall -p blastn -d /usr/local/projects/GIV/Influenza_full_length_NT/HA_full_length_NT_complete.fa -b 1 -v 1 -m 8 -i ${c} | \
+     cut -f 2 | \
+     sort -u | \
+     join - /usr/local/projects/GIV/Influenza_full_length_NT/HA_gi_to_subtype_map.txt | \
+     cut -d ' ' -f 2 | \
+     sort -u | \
+     tr '\n' ',' | sed -e 's/,$//' `
+    echo "${subtype_list}"
+  endif
+end
+
+foreach c ( `ls -1 */assembly_by_segment/NA/NA_100x_contigs.fasta` )
+  set num_na_subtypes = \
+    `blastall -p blastn -d /usr/local/projects/GIV/Influenza_full_length_NT/NA_full_length_NT_complete.fa -b 1 -v 1 -m 8 -i ${c} | \
+     cut -f 2 | \
+     sort -u | \
+     join - /usr/local/projects/GIV/Influenza_full_length_NT/NA_gi_to_subtype_map.txt | \
+     cut -d ' ' -f 2 | \
+     sort -u | \
+     wc -l`
+  if ( ${num_na_subtypes} > 1 ) then
+  echo "INFO:  [${c}] shows [${num_na_subtypes}] NA subtypes"
+    set subtype_list = `blastall -p blastn -d /usr/local/projects/GIV/Influenza_full_length_NT/NA_full_length_NT_complete.fa -b 1 -v 1 -m 8 -i ${c} | \
+     cut -f 2 | \
+     sort -u | \
+     join - /usr/local/projects/GIV/Influenza_full_length_NT/NA_gi_to_subtype_map.txt | \
+     cut -d ' ' -f 2 | \
+     sort -u | \
+     tr '\n' ',' | sed -e 's/,$//' `
+    echo "${subtype_list}"
+  endif
+end

@@ -1,0 +1,76 @@
+set project_root = /usr/local/projects/VHTNGS
+set barcode_data_root = ${project_root}/barcode_data
+set sample_data_root = ${project_root}/sample_data_new
+alias consed /usr/local/genome/bin/consed
+
+foreach i ( `grep "^DRAFT" 20100729_ALL_DATA_status.csv | grep giv3 | sort -nrk2 | sort -u | grep ",7,8,giv3"` )
+  set db_name = `echo ${i} | cut -d ',' -f 4`
+  set col_name = `echo ${i} | cut -d ',' -f 5`
+  set bac_id = `echo ${i} | cut -d ',' -f 6`
+
+  set sample_data = ${sample_data_root}/${db_name}/${col_name}/${bac_id}
+  set sample_mapping_dir = ${sample_data}/mapping
+  if ( -e ${sample_mapping_dir}/consed_with_sanger/cas2consed.consensus.fasta.fluValidator ) then
+    echo "\n\nINFO: cas2consed.consensus.fasta.fluValidator for sample [${db_name}_${col_name}_${bac_id}]"
+    cat ${sample_mapping_dir}/consed_with_sanger/cas2consed.consensus.fasta.fluValidator
+    pushd ${sample_mapping_dir}/consed_with_sanger/edit_dir
+      consed >& /dev/null
+    popd
+  else
+    echo "\n\nERROR: No file cas2consed.consensus.fasta.fluValidator for sample [${db_name}_${col_name}_${bac_id}]"
+  endif
+end
+
+foreach i ( `grep "^DRAFT" 20100729_ALL_DATA_status.csv | grep giv3 | sort -nrk2 | sort -u | grep ",6,8,giv3"` )
+  set db_name = `echo ${i} | cut -d ',' -f 4`
+  set col_name = `echo ${i} | cut -d ',' -f 5`
+  set bac_id = `echo ${i} | cut -d ',' -f 6`
+
+  set sample_data = ${sample_data_root}/${db_name}/${col_name}/${bac_id}
+  set sample_mapping_dir = ${sample_data}/mapping
+  if ( -e ${sample_mapping_dir}/consed_with_sanger/cas2consed.consensus.fasta.fluValidator ) then
+    echo "\n\nINFO: cas2consed.consensus.fasta.fluValidator for sample [${db_name}_${col_name}_${bac_id}]"
+    cat ${sample_mapping_dir}/consed_with_sanger/cas2consed.consensus.fasta.fluValidator
+    pushd ${sample_mapping_dir}/consed_with_sanger/edit_dir
+      consed >& /dev/null
+    popd
+  else
+    echo "\n\nERROR: No file cas2consed.consensus.fasta.fluValidator for sample [${db_name}_${col_name}_${bac_id}]"
+  endif
+end
+
+foreach i ( `grep "^DRAFT" 20100729_ALL_DATA_status.csv | grep giv3 | sort -nrk2 | sort -u | grep ",5,8,giv3"` )
+  set db_name = `echo ${i} | cut -d ',' -f 4`
+  set col_name = `echo ${i} | cut -d ',' -f 5`
+  set bac_id = `echo ${i} | cut -d ',' -f 6`
+
+  set sample_data = ${sample_data_root}/${db_name}/${col_name}/${bac_id}
+  set sample_mapping_dir = ${sample_data}/mapping
+  if ( -e ${sample_mapping_dir}/consed_with_sanger/cas2consed.consensus.fasta.fluValidator ) then
+    echo "\n\nINFO: cas2consed.consensus.fasta.fluValidator for sample [${db_name}_${col_name}_${bac_id}]"
+    cat ${sample_mapping_dir}/consed_with_sanger/cas2consed.consensus.fasta.fluValidator
+    pushd ${sample_mapping_dir}/consed_with_sanger/edit_dir
+      consed >& /dev/null
+    popd
+  else
+    echo "\n\nERROR: No file cas2consed.consensus.fasta.fluValidator for sample [${db_name}_${col_name}_${bac_id}]"
+  endif
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

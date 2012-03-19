@@ -1,0 +1,87 @@
+csh
+use sge
+source /usr/local/sge_current/jcvi/common/settings.csh
+setenv PATH /usr/local/packages/seq454-64_patch-v2.5p1-internal-10Jun32-1/bin:${PATH}
+setenv PATH /usr/local/packages/clc-ngs-cell:/usr/local/packages/clc-bfx-cell:${PATH}
+setenv RUBYLIB /usr/local/devel/DAS/users/tstockwe/Ruby/Tools/Bio
+use emboss50
+umask 002
+
+
+set sispa_pool_name = 20110622_2_58xJBC
+set sff_file_list = "\
+"
+set fastq_file_list = "\
+/usr/local/JTC/data/SOLEXA_archive1/110727_SOLEXA3_00047_FC/Data/Intensities/BaseCalls/demultiplex_07-08-2011/001/GERALD_07-08-2011_solexa/s_4_1_sequence.txt,\
+/usr/local/JTC/data/SOLEXA_archive1/110727_SOLEXA3_00047_FC/Data/Intensities/BaseCalls/demultiplex_07-08-2011/001/GERALD_07-08-2011_solexa/s_4_2_sequence.txt\
+"
+
+
+set project_root = /usr/local/projects/VHTNGS
+set scratch_root = /usr/local/scratch/VIRAL/VHTNGS
+set barcode_data_root = ${project_root}/barcode_data
+set sispa_data_root = ${project_root}/sispa_data_new
+set sispa_data_root = ${scratch_root}/sispa_data_new
+set sample_data_root = ${project_root}/sample_data_new
+set barcode_data_dir = ${barcode_data_root}/${sispa_pool_name}
+set sispa_data_dir = ${sispa_data_root}/${sispa_pool_name}
+set fastq_dir = ${sispa_data_dir}/fastq
+set merged_fastq_dir = ${sispa_data_dir}/merged_fastq
+set deconvolved_merged_fastq_dir = ${sispa_data_dir}/deconvolved_merged_fastq
+set sff_dir = ${sispa_data_dir}/sff
+set merged_sff_dir = ${sispa_data_dir}/merged_sff
+set deconvolved_merged_sff_dir = ${sispa_data_dir}/deconvolved_merged_sff
+set merged_fastq_file = ${merged_fastq_dir}/merged_solexa_sequence.fastq
+set merged_sff_file = ${merged_sff_dir}/merged_454.sff
+set barcode_file_name = ${barcode_data_dir}/barcode_metadata_from_GLK.txt
+
+
+pushd ${project_root}
+
+
+############################# COPY SISPA DATA TO SAMPLE AREAS ##########################
+foreach bc_rec ( `cat ${barcode_file_name} | tr ' ' '_' | tr '\t' ':' ` )
+  set bc       = `echo "${bc_rec}" | cut -d ':' -f 1`
+  set bc_seq   = `echo "${bc_rec}" | cut -d ':' -f 2`
+  set bac_id   = `echo "${bc_rec}" | cut -d ':' -f 3`
+  set blinded  = `echo "${bc_rec}" | cut -d ':' -f 4`
+  set species  = `echo "${bc_rec}" | cut -d ':' -f 5`
+  set db_name  = `echo "${bc_rec}" | cut -d ':' -f 6`
+  set col_name = `echo "${bc_rec}" | cut -d ':' -f 7`
+  set bac_id_len = `echo ${bac_id} | tr -d '\n' | wc -c`
+  set db_name_len = `echo ${db_name} | tr -d '\n' | wc -c`
+  set col_name_len = `echo ${col_name} | tr -d '\n' | wc -c`
+  if (${bac_id_len} > 0 && ${db_name_len} > 0 && ${col_name_len} > 0) then
+    echo "INFO: processing 454 sff data for SISPA pool [${sispa_pool_name}] barcode [${bc}]"
+    set deconvolved_sff = ${deconvolved_merged_sff_dir}/trim_${bc}.sff
+    set sample_data = ${sample_data_root}/${db_name}/${col_name}/${bac_id}
+
+    set sample_data_sff = ${sample_data}/sff
+
+    if ( -d ${sample_data} ) then
+    else
+      mkdir -p ${sample_data}
+    endif
+
+    if ( -d ${sample_data_sff} ) then
+    else
+      mkdir -p ${sample_data_sff}
+    endif
+
+    if ( -e ${deconvolved_sff} ) then
+      echo "INFO: copying sff data to [${db_name}/${col_name}/${bac_id}]"
+      set key = `sffinfo ${deconvolved_sff} | \
+                   head -n 100 | \
+                   grep "Key Sequence:" | \
+                   cut -d ':' -f 2 | \
+                   sed -e 's/\s//g' | \
+                   gawk '{printf("%s\n",$1);}'`
+      cp ${deconvolved_sff} ${sample_data_sff}/${sispa_pool_name}_trim_${bc}.${key}.sff
+    endif
+
+
+  else
+    echo "WARNING:  No sample data transfer for bc_rec [${bc_rec}]"
+  endif
+end
+

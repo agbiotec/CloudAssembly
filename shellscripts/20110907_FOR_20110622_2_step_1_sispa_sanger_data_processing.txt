@@ -1,0 +1,66 @@
+csh
+use sge
+source /usr/local/sge_current/jcvi/common/settings.csh
+setenv PATH /usr/local/packages/seq454-64_patch-v2.5p1-internal-10Jun32-1/bin:${PATH}
+setenv PATH /usr/local/packages/clc-ngs-cell:/usr/local/packages/clc-bfx-cell:${PATH}
+setenv RUBYLIB /usr/local/devel/DAS/users/tstockwe/Ruby/Tools/Bio
+use emboss50
+umask 002
+
+
+set sispa_pool_name = 20110622_2_58xJBC
+set sff_file_list = "\
+"
+set fastq_file_list = "\
+/usr/local/JTC/data/SOLEXA_archive1/110727_SOLEXA3_00047_FC/Data/Intensities/BaseCalls/demultiplex_07-08-2011/001/GERALD_07-08-2011_solexa/s_4_1_sequence.txt,\
+/usr/local/JTC/data/SOLEXA_archive1/110727_SOLEXA3_00047_FC/Data/Intensities/BaseCalls/demultiplex_07-08-2011/001/GERALD_07-08-2011_solexa/s_4_2_sequence.txt\
+"
+
+
+set project_root = /usr/local/projects/VHTNGS
+set scratch_root = /usr/local/scratch/VIRAL/VHTNGS
+set barcode_data_root = ${project_root}/barcode_data
+set sispa_data_root = ${project_root}/sispa_data_new
+set sispa_data_root = ${scratch_root}/sispa_data_new
+set sample_data_root = ${project_root}/sample_data_new
+set barcode_data_dir = ${barcode_data_root}/${sispa_pool_name}
+set sispa_data_dir = ${sispa_data_root}/${sispa_pool_name}
+set fastq_dir = ${sispa_data_dir}/fastq
+set merged_fastq_dir = ${sispa_data_dir}/merged_fastq
+set deconvolved_merged_fastq_dir = ${sispa_data_dir}/deconvolved_merged_fastq
+set sff_dir = ${sispa_data_dir}/sff
+set merged_sff_dir = ${sispa_data_dir}/merged_sff
+set deconvolved_merged_sff_dir = ${sispa_data_dir}/deconvolved_merged_sff
+set merged_fastq_file = ${merged_fastq_dir}/merged_solexa_sequence.fastq
+set merged_sff_file = ${merged_sff_dir}/merged_454.sff
+set barcode_file_name = ${barcode_data_dir}/barcode_metadata_from_GLK.txt
+
+
+pushd ${project_root}
+
+
+########################## 454 SFF SISPA DATA PROCESSING #####################
+# 454 sff data merging, deconvolution, trimming, and non-redundant filtering
+
+# copy the 454 sff data
+
+# merge the 454 sff data using grid resource 
+
+# check that all is finished, and went ok
+
+mkdir -p ${scratch_root}
+
+foreach sff_file (`echo ${sff_file_list} | tr -d ' ' | tr ',' '\n' | sort -u`)
+  ln -s ${sff_file} ${sff_dir}/${sff_file:t}
+end
+
+runLinux \
+  --commandline "\
+    /usr/local/packages/seq454-64_patch-v2.5p1-internal-10Jun32-1/bin/sfffile -o ${merged_sff_file} ${sff_dir}/*.sff\
+  " \
+  --output ${merged_sff_file}_sfffile_merging.stdout \
+  --error ${merged_sff_file}_sfffile_merging.stderr \
+  --project 810001 \
+  --length fast
+
+cat ${merged_sff_file}_sfffile_merging.std*

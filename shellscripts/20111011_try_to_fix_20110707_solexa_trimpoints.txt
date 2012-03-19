@@ -1,0 +1,142 @@
+csh
+setenv RUBYLIB /usr/local/devel/DAS/users/tstockwe/Ruby/Tools/Bio
+setenv PATH /usr/local/packages/clc-ngs-cell:/usr/local/packages/clc-bfx-cell:${PATH}
+use emboss50
+umask 002
+
+set sispa_pool_name = 20110707_104xMPA_2xMG_1xSW_6xNORV
+set project_root = /usr/local/projects/VHTNGS
+set scratch_root = /usr/local/scratch/VIRAL/VHTNGS
+set barcode_data_root = ${project_root}/barcode_data
+set sispa_data_root = ${project_root}/sispa_data_new
+set sispa_data_root = ${scratch_root}/sispa_data_new
+set sample_data_root = ${project_root}/sample_data_new
+set barcode_data_dir = ${barcode_data_root}/${sispa_pool_name}
+set sispa_data_dir = ${sispa_data_root}/${sispa_pool_name}
+set fastq_dir = ${sispa_data_dir}/fastq
+set merged_fastq_dir = ${sispa_data_dir}/merged_fastq
+set deconvolved_merged_fastq_dir = ${sispa_data_dir}/deconvolved_merged_fastq
+set sff_dir = ${sispa_data_dir}/sff
+set merged_sff_dir = ${sispa_data_dir}/merged_sff
+set deconvolved_merged_sff_dir = ${sispa_data_dir}/deconvolved_merged_sff
+set merged_fastq_file = ${merged_fastq_dir}/merged_solexa_sequence.fastq
+set merged_sff_file = ${merged_sff_dir}/merged_454.sff
+set barcode_file_name = ${barcode_data_dir}/barcode_metadata_from_GLK.txt
+
+foreach bc_rec ( `cat ${barcode_file_name} | tr ' ' '_' | tr '\t' ':' | cut -d ':' -f 3,6,7 | sort -u`)
+  set bac_id   = `echo "${bc_rec}" | cut -d ':' -f 1`
+  set db_name  = `echo "${bc_rec}" | cut -d ':' -f 2`
+  set col_name = `echo "${bc_rec}" | cut -d ':' -f 3`
+  set sample_data = ${sample_data_root}/${db_name}/${col_name}/${bac_id}
+  set sample_data_solexa = ${sample_data}/solexa
+  set sample_data_merged_solexa = ${sample_data}/merged_solexa
+  set sample_data_merged_solexa_file_t = ${sample_data_merged_solexa}/${db_name}_${col_name}_${bac_id}.fastq.trimpoints
+  echo "INFO: processing data for [${sample_data_merged_solexa}/${db_name}_${col_name}_${bac_id}.fastq.trimpoints]"
+  cat ${sample_data_solexa}/*_trim_*.fastq.trimpoints | \
+    sort \
+    > ${sample_data_merged_solexa_file_t}
+end
+
+
+foreach bc_rec ( `cat ${barcode_file_name} | tr ' ' '_' | tr '\t' ':' | cut -d ':' -f 3,6,7 | sort -u | grep -v "POSCTRL" | grep -v "piv"`)
+  set bac_id   = `echo "${bc_rec}" | cut -d ':' -f 1`
+  set db_name  = `echo "${bc_rec}" | cut -d ':' -f 2`
+  set col_name = `echo "${bc_rec}" | cut -d ':' -f 3`
+  echo "INFO: processing final trimpoints data for [${db_name}/${col_name}/${bac_id}]"
+  set sample_data = ${sample_data_root}/${db_name}/${col_name}/${bac_id}
+  set sample_data_merged_solexa = ${sample_data}/merged_solexa
+  set sample_data_merged_solexa_file = ${sample_data_merged_solexa}/${db_name}_${col_name}_${bac_id}.fastq
+  set sample_data_merged_solexa_file_t = ${sample_data_merged_solexa}/${db_name}_${col_name}_${bac_id}.fastq.trimpoints
+  set sample_data_merged_solexa_file_u = ${sample_data_merged_solexa}/${db_name}_${col_name}_${bac_id}.fastq.untrimmed
+  set sample_mapping_dir = ${sample_data}/mapping
+  pushd ${sample_mapping_dir} >& /dev/null
+    set final_fastq_reads = ${db_name}_${col_name}_${bac_id}_final.fastq
+    if ( `cat ${sample_data_merged_solexa_file} | wc -l` > 0 ) then
+      grep "^@SOLEXA" ${final_fastq_reads} | cut -c 2- | sort > include_list.txt
+      join -1 1 -2 1 \
+        include_list.txt \
+        ${sample_data_merged_solexa_file_t} | \
+        tr ' ' '\t' > ${final_fastq_reads}.trimpoints
+    endif
+  popd >& /dev/null
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+set triplet_file = /home/tstockwe/
+
+foreach bc_rec ( `cat ${triplet_file} | tr ',' ':' | sort -u` )
+  set bac_id   = `echo "${bc_rec}" | cut -d ':' -f 3`
+  set db_name  = `echo "${bc_rec}" | cut -d ':' -f 1`
+  set col_name = `echo "${bc_rec}" | cut -d ':' -f 2`
+  echo "INFO: processing data for [${db_name}/${col_name}/${bac_id}]"
+  set sample_data = ${sample_data_root}/${db_name}/${col_name}/${bac_id}
+  set sample_data_merged_solexa = ${sample_data}/merged_solexa
+  set sample_data_merged_sff = ${sample_data}/merged_sff
+  set sample_data_merged_sanger = ${sample_data}/merged_sanger
+  set sample_data_merged_solexa_file = ${sample_data_merged_solexa}/${db_name}_${col_name}_${bac_id}.fastq
+  set sample_data_merged_solexa_file_t = ${sample_data_merged_solexa}/${db_name}_${col_name}_${bac_id}.fastq.trimpoints
+  set sample_data_merged_solexa_file_u = ${sample_data_merged_solexa}/${db_name}_${col_name}_${bac_id}.fastq.untrimmed
+  set sample_data_merged_sff_file = ${sample_data_merged_sff}/${db_name}_${col_name}_${bac_id}.sff
+  set sample_data_merged_sanger_file = ${sample_data_merged_sanger}/${db_name}_${col_name}_${bac_id}.fasta
+  set tblastx_outdir = ${sample_data}/tblastx_output
+  set noninter_chimera_list = ${tblastx_outdir}/noninter_chimera_reads.uaccno_list
+  set inter_chimera_list = ${tblastx_outdir}/inter_chimera_reads.uaccno_list
+  set sample_mapping_dir = ${sample_data}/mapping
+
+
+  cat ${sample_data_merged_solexa_file_t} | tr '_' ':' | sed -e 's/:/_/' | sort > ${sample_data_merged_solexa_file_t}.new
+  mv ${sample_data_merged_solexa_file_t} ${sample_data_merged_solexa_file_t}.old
+  mv ${sample_data_merged_solexa_file_t}.new ${sample_data_merged_solexa_file_t}
+
+  pushd ${sample_mapping_dir} >& /dev/null

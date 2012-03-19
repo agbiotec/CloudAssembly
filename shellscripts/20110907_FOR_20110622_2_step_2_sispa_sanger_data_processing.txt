@@ -1,0 +1,92 @@
+csh
+use sge
+source /usr/local/sge_current/jcvi/common/settings.csh
+setenv PATH /usr/local/packages/seq454-64_patch-v2.5p1-internal-10Jun32-1/bin:${PATH}
+setenv PATH /usr/local/packages/clc-ngs-cell:/usr/local/packages/clc-bfx-cell:${PATH}
+setenv RUBYLIB /usr/local/devel/DAS/users/tstockwe/Ruby/Tools/Bio
+use emboss50
+umask 002
+
+
+set sispa_pool_name = 20110622_2_58xJBC
+set sff_file_list = "\
+"
+set fastq_file_list = "\
+/usr/local/JTC/data/SOLEXA_archive1/110727_SOLEXA3_00047_FC/Data/Intensities/BaseCalls/demultiplex_07-08-2011/001/GERALD_07-08-2011_solexa/s_4_1_sequence.txt,\
+/usr/local/JTC/data/SOLEXA_archive1/110727_SOLEXA3_00047_FC/Data/Intensities/BaseCalls/demultiplex_07-08-2011/001/GERALD_07-08-2011_solexa/s_4_2_sequence.txt\
+"
+
+
+set project_root = /usr/local/projects/VHTNGS
+set scratch_root = /usr/local/scratch/VIRAL/VHTNGS
+set barcode_data_root = ${project_root}/barcode_data
+set sispa_data_root = ${project_root}/sispa_data_new
+set sispa_data_root = ${scratch_root}/sispa_data_new
+set sample_data_root = ${project_root}/sample_data_new
+set barcode_data_dir = ${barcode_data_root}/${sispa_pool_name}
+set sispa_data_dir = ${sispa_data_root}/${sispa_pool_name}
+set fastq_dir = ${sispa_data_dir}/fastq
+set merged_fastq_dir = ${sispa_data_dir}/merged_fastq
+set deconvolved_merged_fastq_dir = ${sispa_data_dir}/deconvolved_merged_fastq
+set sff_dir = ${sispa_data_dir}/sff
+set merged_sff_dir = ${sispa_data_dir}/merged_sff
+set deconvolved_merged_sff_dir = ${sispa_data_dir}/deconvolved_merged_sff
+set merged_fastq_file = ${merged_fastq_dir}/merged_solexa_sequence.fastq
+set merged_sff_file = ${merged_sff_dir}/merged_454.sff
+set barcode_file_name = ${barcode_data_dir}/barcode_metadata_from_GLK.txt
+
+pushd ${project_root}
+
+
+############ The GRID DECONVOLVE #########################
+
+set key = `sffinfo ${merged_sff_file} | \
+             head -n 100 | \
+             grep "Key Sequence:" | \
+             cut -d ':' -f 2 | \
+             sed -e 's/\s//g' | \
+             gawk '{printf("%s\n",$1);}'`
+set keylength = `sffinfo ${merged_sff_file} | \
+             head -n 100 | \
+             grep "Key Sequence:" | \
+             cut -d ':' -f 2 | \
+             sed -e 's/\s//g' | \
+             gawk '{printf("%s\n",length($1));}'`
+runLinux \
+  --output ${merged_sff_file}_grid_deconvolve.stdout \
+  --error ${merged_sff_file}_grid_deconvolve.stderr \
+  --project 810001 \
+  --length fast \
+  --commandline "\
+    /usr/local/devel/VIRIFX/software/Grid/bin/grid-deconvolve.pl \
+      --project 810001 \
+      --infile ${merged_sff_file} \
+      --pattern ${barcode_file_name}.pat \
+      --queue fast.q \
+      --tmpdir ${merged_sff_file}_deconvolver_tmp \
+      --outdir ${merged_sff_file}_deconvolver_test \
+      --errdir ${merged_sff_file}_deconvolver_err \
+      --trim_points_only \
+      --readlength 50 \
+      --clamplength 6 \
+      --keylength 4 \
+      --verbose >& ${merged_sff_file}_deconvolver.log \
+   "
+cat ${merged_sff_file}_deconvolver.log | more
+
+# Now wait until this is finished...  takes a while...  Be sure to check log file(s)
+
+
+# If any exits due to errors occurred, you will need to re-run the command...
+
+# use the barcode deconvolver output to bin and trim the sff data
+foreach bc ( `cat ${barcode_file_name} | cut -f 1`)
+  if ( -e ${merged_sff_file}_deconvolver_test/${bc}/${bc}.trim ) then
+    echo "INFO: Processing SISPA pool [${sispa_pool_name}] 454 sff data for barcode [${bc}]"
+    sfffile -o ${deconvolved_merged_sff_dir}/trim_${bc}.sff \
+      -i ${merged_sff_file}_deconvolver_test/${bc}/${bc}.trim \
+      -t ${merged_sff_file}_deconvolver_test/${bc}/${bc}.trim \
+      ${merged_sff_file}
+  endif
+end
+

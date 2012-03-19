@@ -1,0 +1,275 @@
+echo "{db},{col_name},{bac_id},{subtype},{glk_subtype},{glk_blinded_number},{glk_species_code},{subtype_msg},{fv_msg}"
+foreach status_type (`echo ${status_types} | tr ',' '\n'`)
+  foreach col_name ( `cat ${status_type}.csv.fixed | cut -d ',' -f 2 | sort -u `)
+    foreach rec (`grep ",${col_name}," ${status_type}.csv.fixed`)
+      set db = `echo "${rec}" | cut -d ',' -f 1`
+      set bac_id = `echo "${rec}" | cut -d ',' -f 3`
+      set input_fasta_file = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/cas2consed.consensus.fasta
+      set input_fv_file = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/cas2consed.consensus.fasta.fluValidator
+      if ( -e ${input_fasta_file} && -e ${input_fv_file} ) then
+        set subtype = `/usr/local/devel/DAS/software/ElviraStaging/bin/fluValidator --fasta ${input_fasta_file} --report text | grep "^Full Serotype:" | cut -d ':' -f 2`
+        set glk_data = `/usr/local/common/Elvira/bin/flam -D ${db} -b ${bac_id} --attr "subtype,blinded_number,species_code" -H | cut -f 3- | tr '\t' '|'`
+        set glk_subtype = `echo "${glk_data}" | cut -d '|' -f 1`
+        set glk_blinded_number = `echo "${glk_data}" | cut -d '|' -f 2`
+        set glk_species_code = `echo "${glk_data}" | cut -d '|' -f 3`
+        set invalid_cnt = `cat ${input_fv_file} | grep " INVALID " | wc -l`
+        set contig_cnt = `cat ${input_fv_file} | grep "Contig " | wc -l`
+        set fv_msg = `echo "${invalid_cnt} ${contig_cnt}" | \
+                    gawk -F ' ' '{if( ($1==0) && ($2==8) ){printf("INFO:  8 contigs; none INVALID");}else{printf("ERROR:  %s contigs; %s INVALID", $2, $1);}}'`
+        set subtype_msg = `echo "${subtype} ${glk_subtype}" | \
+                             gawk -F ' ' '{if($1==$2){printf("INFO:  subtypes match");}else{printf("ERROR:  subtypes mismatch");}}'`
+        sleep 1
+        echo "${db},${col_name},${bac_id},${subtype},${glk_subtype},${glk_blinded_number},${glk_species_code},${subtype_msg},${fv_msg}"
+      else
+        if ( -e ${input_fasta_file} ) then
+        else
+          echo "ERROR:  missing cas2consed.consensus.fasta file for sample [${db}/${col_name}/${bac_id}]"
+        endif
+        if ( -e ${input_fv_file} ) then
+        else
+          echo "ERROR:  missing cas2consed.consensus.fasta.fluValidator file for sample [${db}/${col_name}/${bac_id}]"
+        endif
+      endif
+    end
+  end
+end
+
+foreach status_type (`echo ${status_types} | tr ',' '\n'`)
+  foreach col_name ( `cat ${status_type}.csv.fixed | cut -d ',' -f 2 | sort -u `)
+    foreach rec (`grep ",${col_name}," ${status_type}.csv.fixed`)
+
+set barcode_file_name = /usr/local/projects/VHTNGS/barcode_data/20100416_B_57xMCE_14xAK_5xCOH_4xVEEV_3xINS_1xCC_1xWKS/barcode_metadata_from_GLK.txt
+foreach rec ( `cat ${barcode_file_name} | gawk -F '\t' '{printf("%s,%s,%s\n",$6,$7,$3);}' | sort -u` )
+      set db = `echo "${rec}" | cut -d ',' -f 1`
+      set col_name = `echo "${rec}" | cut -d ',' -f 2`
+      set bac_id = `echo "${rec}" | cut -d ',' -f 3`
+      set input_fasta_file = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/cas2consed.consensus.fasta
+      set input_fv_file = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/cas2consed.consensus.fasta.fluValidator
+      set input_autotasker_file = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/autoTasker.txt
+      if ( -e ${input_fasta_file} && -e ${input_fv_file} && -e ${input_autotasker_file}) then
+      else
+        if ( -e ${input_fasta_file} ) then
+        else
+          echo "ERROR:  missing cas2consed.consensus.fasta file for sample [${db}/${col_name}/${bac_id}]"
+        endif
+        if ( -e ${input_fv_file} ) then
+        else
+          echo "ERROR:  missing cas2consed.consensus.fasta.fluValidator file for sample [${db}/${col_name}/${bac_id}]"
+        endif
+        if ( -e ${input_autotasker_file} ) then
+        else
+          echo "ERROR:  missing autoTasker.txt file for sample [${db}/${col_name}/${bac_id}]"
+        endif
+      endif
+end
+
+    end
+  end
+end
+
+foreach status_type (`echo ${status_types} | tr ',' '\n'`)
+  foreach col_name ( `cat ${status_type}.csv.fixed | cut -d ',' -f 2 | sort -u `)
+    foreach rec (`grep ",${col_name}," ${status_type}.csv.fixed`)
+      set db = `echo "${rec}" | cut -d ',' -f 1`
+      set bac_id = `echo "${rec}" | cut -d ',' -f 3`
+      set input_autotasker_file = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/autoTasker.txt
+      set input_fv_file = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/cas2consed.consensus.fasta.fluValidator
+      if ( -e ${input_autotasker_file} ) then
+        if ( -z ${input_autotasker_file} ) then
+          echo "ERROR:  empty autoTasker.txt file for sample [${db}/${col_name}/${bac_id}]"
+        else
+          set coverage_cnt = `grep -i coverage ${input_autotasker_file} | wc -l`
+          if ( ${coverage_cnt} > 0 ) then
+            echo "WARNING:  Coverage issue in autoTasker.txt file for sample [${db}/${col_name}/${bac_id}]"
+            cat ${input_autotasker_file}
+            cat ${input_fv_file}
+          endif
+        endif
+      else
+        echo "ERROR:  missing autoTasker.txt file for sample [${db}/${col_name}/${bac_id}]"
+      endif
+    end
+  end
+end
+
+
+umask 002
+set barcode_file_name = /usr/local/projects/VHTNGS/barcode_data/20100416_B_57xMCE_14xAK_5xCOH_4xVEEV_3xINS_1xCC_1xWKS/barcode_metadata_from_GLK.txt
+foreach rec ( `cat ${barcode_file_name} | gawk -F '\t' '{printf("%s,%s,%s\n",$6,$7,$3);}' | sort -u` )
+      set db = `echo "${rec}" | cut -d ',' -f 1`
+      set col_name = `echo "${rec}" | cut -d ',' -f 2`
+      set bac_id = `echo "${rec}" | cut -d ',' -f 3`
+      set input_fasta_file = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/cas2consed.consensus.fasta
+      set input_fv_file = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/cas2consed.consensus.fasta.fluValidator
+      set input_autotasker_file = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/autoTasker.txt
+      set flu = `echo ${db} | grep "iv" | wc -l`
+      if ( -e ${input_fasta_file} && -e ${input_fv_file} && -e ${input_autotasker_file} && ${flu} > 0 ) then
+      else
+        if ( -e ${input_fasta_file} &&  -e ${input_fv_file} && ${flu} > 0 ) then
+          if ( -e ${input_autotasker_file} ) then
+          else
+            echo "INFO:  generating autoTasker.txt file for sample [${db}/${col_name}/${bac_id}]"
+            set ace_file = `ls -1 /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/edit_dir/*.ace.*[0-9] | tail -1`
+            set edited_refs_file = `ls -1 /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/*_reference_edited.fasta | tail -1`
+            set autoTasker_refs_database = /usr/local/projects/Elvira/etc/giv3/20100727_TBS_revised_autoTasker.avian.fasta
+            set temp_refs_for_sample = /usr/local/scratch/temp_best_refs.fasta
+            
+            if ( -e ${ace_file} && -e ${edited_refs_file} ) then
+              blastall \
+                -p blastn \
+                -i ${edited_refs_file} \
+                -d ${autoTasker_refs_database} \
+                -v 1 \
+                -b 1 \
+                -m 8 | cut -f 2 | sort -u > best_refs.list
+              fnafile \
+                -i best_refs.list \
+                -o ${temp_refs_for_sample} \
+                ${autoTasker_refs_database}
+              formatdb -p F -i ${temp_refs_for_sample}
+              /usr/local/devel/DAS/software/Elvira/bin/autoTasker \
+                --contig ${ace_file} \
+                --ref ${temp_refs_for_sample} \
+                --no-qual --flu --next-gen --txt ${input_autotasker_file}
+            else
+              echo "ERROR:  A problem occurred during autoTasker run for sample [${db}/${col_name}/${bac_id}]" 
+            endif
+          endif
+        endif
+      endif
+end
+
+############ FORCE RE-RUN OF AUTOTASKER ON ALL FLU SAMPLES IN A SISPA POOL ###########################
+set barcode_file_name = /usr/local/projects/VHTNGS/barcode_data/20100226_80xAK_1xMCE_3xARBO_4xVEEV_4xHOLMES/barcode_metadata_from_GLK.txt
+umask 002
+foreach rec ( `cat ${barcode_file_name} | gawk -F '\t' '{printf("%s,%s,%s\n",$6,$7,$3);}' | sort -u` )
+foreach rec ( `cat /home/tstockwe/for_avian_flu/autoTasker_08_16.list | sort -u` )
+  set db = `echo "${rec}" | cut -d ',' -f 1`
+  set col_name = `echo "${rec}" | cut -d ',' -f 2`
+  set bac_id = `echo "${rec}" | cut -d ',' -f 3`
+  set input_fasta_file = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/cas2consed.consensus.fasta
+  set input_fv_file = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/cas2consed.consensus.fasta.fluValidator
+  set flu = `echo ${db} | grep "iv" | wc -l`
+  if ( -e ${input_fasta_file} &&  -e ${input_fv_file} && ${flu} > 0 ) then
+    echo "INFO:  generating autoTasker.txt file for sample [${db}/${col_name}/${bac_id}]"
+    set ace_file = `ls -1tr /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/edit_dir/*.ace.*[0-9] | tail -1`
+    set edited_refs_file = `ls -1 /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/*_reference_edited.fasta | tail -1`
+    set autoTasker_refs_database = /usr/local/projects/Elvira/etc/giv3/20100727_TBS_revised_autoTasker.avian.fasta
+    set temp_refs_for_sample = /usr/local/scratch/temp_best_refs.fasta
+
+    set autotasker_txt = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/autoTasker.${ace_file:t}.txt
+    set autotasker_xml = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/autoTasker.${ace_file:t}.xml
+    set autotasker_nav = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/edit_dir/autoTasker.${ace_file:t}.nav
+            
+    if ( -e ${ace_file} && -e ${edited_refs_file} ) then
+      blastall \
+        -p blastn \
+        -i ${edited_refs_file} \
+        -d ${autoTasker_refs_database} \
+        -v 1 \
+        -b 1 \
+        -m 8 | cut -f 2 | sort -u > best_refs.list
+      fnafile \
+        -i best_refs.list \
+        -o ${temp_refs_for_sample} \
+        ${autoTasker_refs_database}
+      formatdb -p F -i ${temp_refs_for_sample}
+      /usr/local/devel/DAS/software/Elvira/bin/autoTasker \
+        --contig ${ace_file} \
+        --ref ${temp_refs_for_sample} \
+        --no-qual --flu --next-gen --txt ${autotasker_txt} --xml ${autotasker_xml} --nav ${autotasker_nav}
+    else
+      echo "ERROR:  A problem occurred during autoTasker run for sample [${db}/${col_name}/${bac_id}]" 
+    endif
+  endif
+  sleep 3
+end
+
+############ FORCE RE-RUN OF AUTOTASKER ON ALL FLU SAMPLES WITH ZERO SIZED AUTOTASKER TXT OUTPUT #################
+set barcode_file_name = /usr/local/projects/VHTNGS/barcode_data/20100226_80xAK_1xMCE_3xARBO_4xVEEV_4xHOLMES/barcode_metadata_from_GLK.txt
+umask 002
+foreach rec ( `cat ${barcode_file_name} | gawk -F '\t' '{printf("%s,%s,%s\n",$6,$7,$3);}' | sort -u` )
+foreach rec ( `cat /home/tstockwe/for_avian_flu/autoTasker_08_16.list | sort -u` )
+  set db = `echo "${rec}" | cut -d ',' -f 1`
+  set col_name = `echo "${rec}" | cut -d ',' -f 2`
+  set bac_id = `echo "${rec}" | cut -d ',' -f 3`
+  set input_fasta_file = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/cas2consed.consensus.fasta
+  set input_fv_file = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/cas2consed.consensus.fasta.fluValidator
+  set flu = `echo ${db} | grep "iv" | wc -l`
+  if ( -e ${input_fasta_file} && ${flu} > 0 ) then
+    set ace_file = `ls -1tr /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/edit_dir/*.ace.*[0-9] | tail -1`
+    set edited_refs_file = `ls -1 /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/*_reference_edited.fasta | tail -1`
+    set autoTasker_refs_database = /usr/local/projects/Elvira/etc/giv3/20100727_TBS_revised_autoTasker.avian.fasta
+    set temp_refs_for_sample = /usr/local/scratch/temp_best_refs.fasta
+
+    set autotasker_txt = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/autoTasker.${ace_file:t}.txt
+    set autotasker_xml = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/autoTasker.${ace_file:t}.xml
+    set autotasker_nav = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/edit_dir/autoTasker.${ace_file:t}.nav
+            
+    if ( -e ${ace_file} && -e ${edited_refs_file} && -e ${autotasker_txt} ) then
+      if ( -z ${autotasker_txt} ) then
+        echo "INFO:  regenerating autoTasker.txt file for sample [${db}/${col_name}/${bac_id}]"
+        blastall \
+          -p blastn \
+          -i ${edited_refs_file} \
+          -d ${autoTasker_refs_database} \
+          -v 1 \
+          -b 1 \
+          -m 8 | cut -f 2 | sort -u > best_refs.list
+        fnafile \
+          -i best_refs.list \
+          -o ${temp_refs_for_sample} \
+          ${autoTasker_refs_database}
+        formatdb -p F -i ${temp_refs_for_sample}
+        /usr/local/devel/DAS/software/Elvira/bin/autoTaskerBigHeapTBS \
+          --contig ${ace_file} \
+          --ref ${temp_refs_for_sample} \
+          --no-qual --flu --next-gen --txt ${autotasker_txt} --xml ${autotasker_xml} --nav ${autotasker_nav}
+        sleep 3
+      else
+        echo "INFO:  autoTasker.txt file seems OK for sample [${db}/${col_name}/${bac_id}]"
+      endif
+    else
+        echo "INFO:  regenerating autoTasker.txt file for sample [${db}/${col_name}/${bac_id}]"
+        blastall \
+          -p blastn \
+          -i ${edited_refs_file} \
+          -d ${autoTasker_refs_database} \
+          -v 1 \
+          -b 1 \
+          -m 8 | cut -f 2 | sort -u > best_refs.list
+        fnafile \
+          -i best_refs.list \
+          -o ${temp_refs_for_sample} \
+          ${autoTasker_refs_database}
+        formatdb -p F -i ${temp_refs_for_sample}
+        /usr/local/devel/DAS/software/Elvira/bin/autoTaskerBigHeapTBS \
+          --contig ${ace_file} \
+          --ref ${temp_refs_for_sample} \
+          --no-qual --flu --next-gen --txt ${autotasker_txt} --xml ${autotasker_xml} --nav ${autotasker_nav}
+        sleep 3
+    endif
+  else
+      echo "ERROR:  A problem occurred during autoTasker run for sample [${db}/${col_name}/${bac_id}]" 
+  endif
+end
+
+################################################
+set log_file = ~/20100804_Feb2010_SISPA_results.txt
+foreach rec ( `cat ${barcode_file_name} | gawk -F '\t' '{printf("%s,%s,%s\n",$6,$7,$3);}' | sort -u` )
+  set db = `echo "${rec}" | cut -d ',' -f 1`
+  set col_name = `echo "${rec}" | cut -d ',' -f 2`
+  set bac_id = `echo "${rec}" | cut -d ',' -f 3`
+  set input_fasta_file = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/cas2consed.consensus.fasta
+  set input_fv_file = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/cas2consed.consensus.fasta.fluValidator
+  set input_autotasker_file = /usr/local/projects/VHTNGS/sample_data_new/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/autoTasker.txt
+  set flu = `echo ${db} | grep "iv" | wc -l`
+  if ( -e ${input_fasta_file} &&  -e ${input_fv_file} && ${flu} > 0 && -e ${input_autotasker_file} ) then
+    echo "INFO:  autoTasker and fluValidator results for sample [${db}/${col_name}/${bac_id}]" >> ${log_file}
+    cat ${input_fv_file} >> ${log_file}
+    echo "" >> ${log_file}
+    cat ${input_autotasker_file} >> ${log_file}
+    echo "" >> ${log_file}
+  endif
+end
+

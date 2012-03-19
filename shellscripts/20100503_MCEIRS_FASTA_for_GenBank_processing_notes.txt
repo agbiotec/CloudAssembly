@@ -1,0 +1,69 @@
+csh
+
+set delivery_data_dir = /usr/local/projects/VHTNGS/delivery_data/20100503_MCEIRS_samples_fasta_for_GenBank
+mkdir ${delivery_data_dir}
+cd ${delivery_data_dir}
+
+cat  /usr/local/projects/VHTNGS/barcode_data/20091215_MCEIRSsamples1to50/barcode_metadata_from_GLK.txt | \
+  gawk -F'\t' '{printf("%s,%s,%s\n", $6, $7, $3);}' | \
+  grep -v "30209" | grep -v "29626" \
+  >> VALID.csv
+
+echo "" > DRAFT.csv
+
+cat VALID.csv | tr -d ' ' > VALID.csv.fixed
+cat DRAFT.csv | tr -d ' ' > DRAFT.csv.fixed
+
+set datestamp = 20100503
+set status_types = "VALID,DRAFT"
+
+foreach status_type (`echo ${status_types} | tr ',' '\n'`)
+  foreach col_name ( `cat ${status_type}.csv.fixed | cut -d ',' -f 2 | sort -u | grep "MCE" `)
+    set consolidated_output_file = ${datestamp}_${col_name}_${status_type}.fasta
+    if ( -e ${consolidated_output_file} ) then
+      rm ${consolidated_output_file}
+    endif
+    touch ${consolidated_output_file}
+    foreach rec (`grep ",${col_name}," ${status_type}.csv.fixed`)
+      set db = `echo "${rec}" | cut -d ',' -f 1`
+      set bac_id = `echo "${rec}" | cut -d ',' -f 3`
+      set blinded_cnt = `grep ${bac_id} /usr/local/projects/VHTNGS/barcode_data/*/barcode_metadata_from_GLK.txt | \
+        grep ${db} | cut -f 4 | sort -u | wc -l`
+      set blinded = `grep ${bac_id} /usr/local/projects/VHTNGS/barcode_data/*/barcode_metadata_from_GLK.txt | \
+        grep ${db} | cut -f 4 | sort -u | tail -n 1`
+      set species_cnt = `grep ${bac_id} /usr/local/projects/VHTNGS/barcode_data/*/barcode_metadata_from_GLK.txt | \
+        grep ${db} | cut -f 5 | sort -u | wc -l`
+      set species = "`grep ${bac_id} /usr/local/projects/VHTNGS/barcode_data/*/barcode_metadata_from_GLK.txt | \
+        grep ${db} | cut -f 5 | sort -u | tail -n 1`"
+      set input_fasta_file_cnt = `ls -1 /usr/local/projects/VHTNGS/sample_data/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/cas2consed.consensus.fasta | wc -l`
+      if ( ${blinded_cnt} == 1 && ${species_cnt} == 1 && ${input_fasta_file_cnt} == 1 ) then
+        set sample_output_file = ${blinded}.fasta
+        if ( -e ${sample_output_file} ) then
+          rm ${sample_output_file}
+        endif
+        touch ${sample_output_file}
+        set input_fasta_file = `ls -1 /usr/local/projects/VHTNGS/sample_data/${db}/${col_name}/${bac_id}/mapping/consed_with_sanger/cas2consed.consensus.fasta`
+        cat ${input_fasta_file} | \
+          gawk -v bac="${bac_id}" -v blinded="${blinded}" -v species="${species}" \
+            '{if ( $0 ~ />/ ) {seg=substr($1,2);printf(">%s-%s %s %s\n",bac, seg, blinded, species);} \
+              else print $0;}' >> ${consolidated_output_file}
+        cat ${input_fasta_file} | \
+          gawk -v bac="${bac_id}" -v blinded="${blinded}" -v species="${species}" \
+            '{if ( $0 ~ />/ ) {seg=substr($1,2);printf(">gnl|NIGSP|%s.%s [segment=%s] [organism=%s]\n", blinded, seg, seg, species);} \
+              else print $0;}' >> ${sample_output_file}
+      else
+        echo "ERROR: Problem with record=[${rec}], blinded_cnt,species_cnt,input_fasta_file_cnt=[${blinded_cnt},${species_cnt},${input_fasta_file_cnt}]"]    
+      endif
+    end
+  end
+end
+
+
+
+
+
+
+
+
+
+

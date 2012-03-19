@@ -1,0 +1,56 @@
+% more /local/solexa_archive1/100420_SOLEXA1_0002/61RTEAAXX_Sample_Sheet.csv
+FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator
+...
+61RTEAAXX,5,201003051-PE-ILI9-01,AVIAN,GATCAG,,N,,
+61RTEAAXX,5,20100226B-PE-ILI11-01,AVIAN,GGCTAC,,N,,
+61RTEAAXX,5,201003052-PE-ILI10-01,AVIAN,TAGCTT,,N,, 
+61RTEAAXX,6,20100226B-PE-ILI11-01,PE,GGCTAC,,N,,
+61RTEAAXX,7,201003052-PE-ILI10-01,PE,TAGCTT,,N,,
+61RTEAAXX,8,201003051-PE-ILI9-01,PE,GATCAG,,N,,
+
+% more  /local/solexa_archive1/100420_SOLEXA1_0002/Data/Intensities/BaseCalls/demultiplexed_data_29-04-2010/SamplesDirectories.csv
+FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,Directory
+...
+61RTEAAXX,5,20100226B-PE-ILI11-01,AVIAN,GGCTAC,,N,,,002
+61RTEAAXX,6,20100226B-PE-ILI11-01,PE,GGCTAC,,N,,,001
+
+61RTEAAXX,5,201003051-PE-ILI9-01,AVIAN,GATCAG,,N,,,003
+61RTEAAXX,8,201003051-PE-ILI9-01,PE,GATCAG,,N,,,001
+
+61RTEAAXX,5,201003052-PE-ILI10-01,AVIAN,TAGCTT,,N,, ,001
+61RTEAAXX,7,201003052-PE-ILI10-01,PE,TAGCTT,,N,,,001
+
+% ls /local/solexa_archive1/100420_SOLEXA1_0002/Data/Intensities/BaseCalls/demultiplexed_data_29-04-2010/001/GERALD_29-04-2010_solexa/s_[6-8]_sequence.txt
+/local/solexa_archive1/100420_SOLEXA1_0002/Data/Intensities/BaseCalls/demultiplexed_data_29-04-2010/001/GERALD_29-04-2010_solexa/s_6_sequence.txt
+/local/solexa_archive1/100420_SOLEXA1_0002/Data/Intensities/BaseCalls/demultiplexed_data_29-04-2010/001/GERALD_29-04-2010_solexa/s_7_sequence.txt
+/local/solexa_archive1/100420_SOLEXA1_0002/Data/Intensities/BaseCalls/demultiplexed_data_29-04-2010/001/GERALD_29-04-2010_solexa/s_8_sequence.txt
+
+% ls /local/solexa_archive1/100420_SOLEXA1_0002/Data/Intensities/BaseCalls/demultiplexed_data_29-04-2010/00[1-3]/GERALD_29-04-2010_solexa/s_5_sequence.txt
+/local/solexa_archive1/100420_SOLEXA1_0002/Data/Intensities/BaseCalls/demultiplexed_data_29-04-2010/001/GERALD_29-04-2010_solexa/s_5_sequence.txt
+/local/solexa_archive1/100420_SOLEXA1_0002/Data/Intensities/BaseCalls/demultiplexed_data_29-04-2010/002/GERALD_29-04-2010_solexa/s_5_sequence.txt
+/local/solexa_archive1/100420_SOLEXA1_0002/Data/Intensities/BaseCalls/demultiplexed_data_29-04-2010/003/GERALD_29-04-2010_solexa/s_5_sequence.txt
+
+# 20100226B-PE-ILI11-01
+/local/solexa_archive1/100420_SOLEXA1_0002/Data/Intensities/BaseCalls/demultiplexed_data_29-04-2010/001/GERALD_29-04-2010_solexa/s_6_sequence.txt
+/local/solexa_archive1/100420_SOLEXA1_0002/Data/Intensities/BaseCalls/demultiplexed_data_29-04-2010/002/GERALD_29-04-2010_solexa/s_5_sequence.txt
+
+# 201003051-PE-ILI9-01
+/local/solexa_archive1/100420_SOLEXA1_0002/Data/Intensities/BaseCalls/demultiplexed_data_29-04-2010/001/GERALD_29-04-2010_solexa/s_8_sequence.txt
+/local/solexa_archive1/100420_SOLEXA1_0002/Data/Intensities/BaseCalls/demultiplexed_data_29-04-2010/003/GERALD_29-04-2010_solexa/s_5_sequence.txt
+
+# 201003052-PE-ILI10-01
+/local/solexa_archive1/100420_SOLEXA1_0002/Data/Intensities/BaseCalls/demultiplexed_data_29-04-2010/001/GERALD_29-04-2010_solexa/s_7_sequence.txt
+/local/solexa_archive1/100420_SOLEXA1_0002/Data/Intensities/BaseCalls/demultiplexed_data_29-04-2010/001/GERALD_29-04-2010_solexa/s_5_sequence.txt
+
+
+ttgaagatgtgtttgcagggaagaacacagatcttgaggcactcatggaatggctaaagaca
+
+ggacatgctgggagcagatgtacactccaggaggagaagtgagaaacgatgatgtagaccagagcttaattattgctgccaggaacata
+ggacatgctgggagcaaatgtacaccccaggaggggaagtgaggaatgatgatgttgaccaaagcttaattatcgctgccagaaacata
+
+ggacatgctgggagcaaatgtacaccccaggaggggaagtgaggaatgatgatgttgaccaaagcttaattatcgctgccaggaacata
+
+
+
+
+

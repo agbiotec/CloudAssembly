@@ -1,0 +1,14 @@
+set source_dir = /usr/local/projects/VHTNGS/sample_data_new/giv3/COH
+set target_dir = /usr/local/scratch/tstockwe/for_COH/COH_data
+mkdir -p ${target_dir}
+set bac_id_list = "30842 30834 30822 30841 30834 30824 30844 30823 30846 30832"
+foreach bac_id ( `echo ${bac_id_list} | tr ' ' '\n' | sort -u` )
+  cp ${source_dir}/${bac_id}/mapping/*_final.fastq ${target_dir}/.
+  cp ${source_dir}/${bac_id}/mapping/*_final.*.sff ${target_dir}/.
+end
+
+pushd ${target_dir:h}
+  tar -cvzf ${target_dir:t}.tgz ${target_dir:t}
+popd
+
+

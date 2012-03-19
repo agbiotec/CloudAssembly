@@ -1,0 +1,26 @@
+set db_name = giv3
+set col_name = COH
+set bac_id_list = "35605 35606 35608 35609 35610 35611 35612 35613 35614 35615 35617 35618"
+foreach bac_id ( `echo ${bac_id_list} | tr ' ' '\n' | sort -u` )
+
+/usr/local/devel/DAS/software/Elvira/bin/viralCas2ConsedPipeline \
+  -cas /usr/local/projects/VHTNGS/sample_data_new/${db_name}/${col_name}_454only/${bac_id}/mapping/${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.cas \
+  -o /usr/local/projects/VHTNGS/sample_data_new/${db_name}/${col_name}_454only/${bac_id}/mapping/consed_with_sanger \
+  -prefix ${db_name}_${col_name}_${bac_id} \
+  -tuple ${db_name},${col_name},${bac_id}
+
+end
+
+set db_name = giv3
+set col_name = WBC
+set bac_id_list = "35799 35800 35801 35802 35803 35804 35806 35807 35808 35809"
+foreach bac_id ( `echo ${bac_id_list} | tr ' ' '\n' | sort -u` )
+
+/usr/local/devel/DAS/software/Elvira/bin/viralCas2ConsedPipeline \
+  -cas /usr/local/projects/VHTNGS/sample_data_new/${db_name}/${col_name}_454only/${bac_id}/mapping/${db_name}_${col_name}_${bac_id}_hybrid_edited_refs.cas \
+  -o /usr/local/projects/VHTNGS/sample_data_new/${db_name}/${col_name}_454only/${bac_id}/mapping/consed_with_sanger \
+  -prefix ${db_name}_${col_name}_${bac_id} \
+  -tuple ${db_name},${col_name},${bac_id}
+
+end
+

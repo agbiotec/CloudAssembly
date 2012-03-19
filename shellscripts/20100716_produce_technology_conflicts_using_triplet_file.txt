@@ -1,0 +1,224 @@
+################### QUICKLY BUILD 454_ONLY, SOLEXA_ONLY, and SANGER_ONLY VARIATIONS FILE ###############
+################### FROM database,collect_code,bac_id triplet csv FILE ###############
+csh
+setenv PATH /usr/local/packages/clc-ngs-cell-2.0.5-linux_64:/usr/local/packages/clc-bfx-cell:${PATH}
+umask 002
+
+set project_root = /usr/local/projects/VHTNGS
+set sample_data_root = ${project_root}/sample_data_new
+set triplet_file_name = /home/tstockwe/for_avian_flu/20100714_cas2consed_triplet.txt
+
+foreach bc_rec ( `cat ${triplet_file_name} | tr -d ' ' | tr ',' ':' ` )
+  set db_name  = `echo "${bc_rec}" | cut -d ':' -f 1`
+  set col_name = `echo "${bc_rec}" | cut -d ':' -f 2`
+  set bac_id   = `echo "${bc_rec}" | cut -d ':' -f 3`
+  set has_sff = 0
+  set has_solexa = 0
+  set has_sanger = 0
+
+  echo "INFO: processing data for [${db_name}/${col_name}/${bac_id}]"
+  set sample_data = ${sample_data_root}/${db_name}/${col_name}/${bac_id}
+  set sample_data_merged_sff = ${sample_data}/merged_sff
+
+  set sample_mapping_dir = ${sample_data}/mapping
+  if ( -d ${sample_mapping_dir} ) then
+  else
+    mkdir -p ${sample_mapping_dir}
+  endif
+
+  pushd ${sample_mapping_dir} >& /dev/null
+    ln -s /usr/local/packages/clc-bfx-cell/license.properties ./
+
+    set best_edited_refs_file = ${db_name}_${col_name}_${bac_id}_reference_edited.fasta
+    set final_sff_reads = ${db_name}_${col_name}_${bac_id}_final.sff
+    set final_fastq_reads = ${db_name}_${col_name}_${bac_id}_final.fastq
+    set final_fasta_reads = ${db_name}_${col_name}_${bac_id}_final.fasta
+
+    set input_read_files = ""
+    foreach key (`ls -1 ${sample_data_merged_sff} | grep "\.[ACGT][ACGT][ACGT][ACGT]\." | cut -d '.' -f 2 | sort -u`)
+      set input_read_files = `echo "${input_read_files} -q ${final_sff_reads:r}.${key}.sff"`
+    end
+
+    if ( `echo ${input_read_files} | wc -c` > 0 ) then
+      set has_sff = 1
+      echo "INFO: using clc_ref_assemble_long to find 454 SNPs for [${db_name}_${col_name}_${bac_id}]"
+      clc_ref_assemble_long \
+        -s 0.95 \
+        -o ${db_name}_${col_name}_${bac_id}_454_only_edited_refs.cas \
+        ${input_read_files} \
+        -d ${best_edited_refs_file}
+      find_variations \
+        -a ${db_name}_${col_name}_${bac_id}_454_only_edited_refs.cas \
+        -c 2 \
+        -o ${db_name}_${col_name}_${bac_id}_454_only_edited_refs.new_contigs \
+        -v \
+        -f 0.2 >& ${db_name}_${col_name}_${bac_id}_454_only_edited_refs_find_variations.log
+      cat ${db_name}_${col_name}_${bac_id}_454_only_edited_refs_find_variations.log | \
+        grep -v Nochange | \
+        cut -d ':' -f 1 | \
+        gawk '{if($0 ~ /^[A-Z]/){s=$1;n=0; } \
+               else if ($0 ~ /Difference/){l=$1; c=$5; n=0; printf("%s:%d:%s\n", s, l, c);}}' > \
+          ${db_name}_${col_name}_${bac_id}_454_only_edited_refs_find_variations.log.reduced
+      clc_ref_assemble_long \
+        -s 0.95 \
+        -o ${db_name}_${col_name}_${bac_id}_454_only_cas2consed.cas \
+        ${input_read_files} \
+        -d consed_with_sanger/cas2consed.consensus.fasta
+      find_variations \
+        -a ${db_name}_${col_name}_${bac_id}_454_only_cas2consed.cas \
+        -c 2 \
+        -o ${db_name}_${col_name}_${bac_id}_454_only_cas2consed.new_contigs \
+        -v \
+        -f 0.2 >& ${db_name}_${col_name}_${bac_id}_454_only_cas2consed_find_variations.log
+      cat ${db_name}_${col_name}_${bac_id}_454_only_cas2consed_find_variations.log | \
+        grep -v Nochange | \
+        cut -d ':' -f 1 | \
+        gawk '{if($0 ~ /^[A-Z]/){s=$1;n=0; } \
+               else if ($0 ~ /Difference/){l=$1; c=$5; n=0; printf("%s:%d:%s\n", s, l, c);}}' > \
+          ${db_name}_${col_name}_${bac_id}_454_only_cas2consed_find_variations.log.reduced
+    endif
+
+    if ( -e ${final_fastq_reads} ) then
+      set has_solexa = 1
+      echo "INFO: using clc_ref_assemble_long to find SOLEXA SNPs for [${db_name}_${col_name}_${bac_id}]"
+      clc_ref_assemble_long \
+        -s 0.95 \
+        -o ${db_name}_${col_name}_${bac_id}_solexa_only_edited_refs.cas \
+        -q ${final_fastq_reads} \
+        -d ${best_edited_refs_file}
+      find_variations \
+        -a ${db_name}_${col_name}_${bac_id}_solexa_only_edited_refs.cas \
+        -c 2 \
+        -o ${db_name}_${col_name}_${bac_id}_solexa_only_edited_refs.new_contigs \
+        -v \
+        -f 0.2 >& ${db_name}_${col_name}_${bac_id}_solexa_only_edited_refs_find_variations.log
+      cat ${db_name}_${col_name}_${bac_id}_solexa_only_edited_refs_find_variations.log | \
+        grep -v Nochange | \
+        cut -d ':' -f 1 | \
+        gawk '{if($0 ~ /^[A-Z]/){s=$1;n=0; } \
+               else if ($0 ~ /Difference/){l=$1; c=$5; n=0; printf("%s:%d:%s\n", s, l, c);}}' > \
+          ${db_name}_${col_name}_${bac_id}_solexa_only_edited_refs_find_variations.log.reduced
+      clc_ref_assemble_long \
+        -s 0.95 \
+        -o ${db_name}_${col_name}_${bac_id}_solexa_only_cas2consed.cas \
+        -q ${final_fastq_reads} \
+        -d consed_with_sanger/cas2consed.consensus.fasta
+      find_variations \
+        -a ${db_name}_${col_name}_${bac_id}_solexa_only_cas2consed.cas \
+        -c 2 \
+        -o ${db_name}_${col_name}_${bac_id}_solexa_only_cas2consed.new_contigs \
+        -v \
+        -f 0.2 >& ${db_name}_${col_name}_${bac_id}_solexa_only_cas2consed_find_variations.log
+      cat ${db_name}_${col_name}_${bac_id}_solexa_only_cas2consed_find_variations.log | \
+        grep -v Nochange | \
+        cut -d ':' -f 1 | \
+        gawk '{if($0 ~ /^[A-Z]/){s=$1;n=0; } \
+               else if ($0 ~ /Difference/){l=$1; c=$5; n=0; printf("%s:%d:%s\n", s, l, c);}}' > \
+          ${db_name}_${col_name}_${bac_id}_solexa_only_cas2consed_find_variations.log.reduced
+    endif
+
+    if ( -e ${final_fasta_reads} ) then
+      if ( `cat ${final_fasta_reads} | wc -l` > 0 ) then
+        set has_sanger = 1
+        echo "INFO: using clc_ref_assemble_long to find SANGER SNPs for [${db_name}_${col_name}_${bac_id}]"
+        clc_ref_assemble_long \
+          -s 0.95 \
+          -o ${db_name}_${col_name}_${bac_id}_sanger_only_edited_refs.cas \
+          -q ${final_fasta_reads} \
+          -d ${best_edited_refs_file}
+        find_variations \
+          -a ${db_name}_${col_name}_${bac_id}_sanger_only_edited_refs.cas \
+          -c 2 \
+          -o ${db_name}_${col_name}_${bac_id}_sanger_only_edited_refs.new_contigs \
+          -v \
+          -f 0.2 >& ${db_name}_${col_name}_${bac_id}_sanger_only_edited_refs_find_variations.log
+      cat ${db_name}_${col_name}_${bac_id}_sanger_only_edited_refs_find_variations.log | \
+        gawk '{if($0 ~ /^[A-Z]/){s=$1;n=0; } \
+               else if ($0 ~ /Difference/){l=$1; c=$5; n=0; printf("%s:%d:%s\n", s, l, c);}}' > \
+          ${db_name}_${col_name}_${bac_id}_sanger_only_edited_refs_find_variations.log.reduced
+
+        clc_ref_assemble_long \
+          -s 0.95 \
+          -o ${db_name}_${col_name}_${bac_id}_sanger_only_cas2consed.cas \
+          -q ${final_fasta_reads} \
+          -d consed_with_sanger/cas2consed.consensus.fasta
+        find_variations \
+          -a ${db_name}_${col_name}_${bac_id}_sanger_only_cas2consed.cas \
+          -c 2 \
+          -o ${db_name}_${col_name}_${bac_id}_sanger_only_cas2consed.new_contigs \
+          -v \
+          -f 0.2 >& ${db_name}_${col_name}_${bac_id}_sanger_only_cas2consed_find_variations.log
+      cat ${db_name}_${col_name}_${bac_id}_sanger_only_cas2consed_find_variations.log | \
+        gawk '{if($0 ~ /^[A-Z]/){s=$1;n=0; } \
+               else if ($0 ~ /Difference/){l=$1; c=$5; n=0; printf("%s:%d:%s\n", s, l, c);}}' > \
+          ${db_name}_${col_name}_${bac_id}_sanger_only_cas2consed_find_variations.log.reduced
+      endif
+    endif
+
+    if ( ${has_sff} > 0 && ${has_solexa} > 0 ) then
+      /usr/local/devel/DAS/software/JavaCommon2/compare2VarFiles.pl \
+        -o ${db_name}_${col_name}_${bac_id}_454_vs_solexa.xls \
+        ${db_name}_${col_name}_${bac_id}_454_only_cas2consed_find_variations.log \
+        ${db_name}_${col_name}_${bac_id}_solexa_only_cas2consed_find_variations.log
+    endif
+    if ( ${has_sff} > 0 && ${has_sanger} > 0 ) then
+      /usr/local/devel/DAS/software/JavaCommon2/compare2VarFiles.pl \
+        -o ${db_name}_${col_name}_${bac_id}_454_vs_sanger.xls \
+        ${db_name}_${col_name}_${bac_id}_454_only_cas2consed_find_variations.log \
+        ${db_name}_${col_name}_${bac_id}_sanger_only_cas2consed_find_variations.log
+    endif
+    if ( ${has_solexa} > 0 && ${has_sanger} > 0 ) then
+      /usr/local/devel/DAS/software/JavaCommon2/compare2VarFiles.pl \
+        -o ${db_name}_${col_name}_${bac_id}_solexa_vs_sanger.xls \
+        ${db_name}_${col_name}_${bac_id}_solexa_only_cas2consed_find_variations.log \
+        ${db_name}_${col_name}_${bac_id}_sanger_only_cas2consed_find_variations.log
+    endif
+
+    set sample_tracking_jar = /usr/local/projects/CAMERA/SampleTracking/SampleTracking.jar
+    set java_cmd = /usr/local/java/1.6.0/bin/java
+    ${java_cmd} -jar ${sample_tracking_jar} -s "${db_name}_${col_name}_${bac_id}" -i
+
+    ${java_cmd} -jar ${sample_tracking_jar} -s "${db_name}_${col_name}_${bac_id}" -U sampleDatabase="${db_name}"
+    ${java_cmd} -jar ${sample_tracking_jar} -s "${db_name}_${col_name}_${bac_id}" -U sampleCollection="${col_name}"
+    ${java_cmd} -jar ${sample_tracking_jar} -s "${db_name}_${col_name}_${bac_id}" -U sampleBacId="${bac_id}"
+#   ${java_cmd} -jar ${sample_tracking_jar} -s "${db_name}_${col_name}_${bac_id}" -U sampleBlindedNumber="${blinded}"
+
+    ${java_cmd} -jar ${sample_tracking_jar} -s "${db_name}_${col_name}_${bac_id}" -w 1
+    ${java_cmd} -jar ${sample_tracking_jar} -s "${db_name}_${col_name}_${bac_id}" -w 2
+    ${java_cmd} -jar ${sample_tracking_jar} -s "${db_name}_${col_name}_${bac_id}" -w 3
+    ${java_cmd} -jar ${sample_tracking_jar} -s "${db_name}_${col_name}_${bac_id}" -w 4
+    ${java_cmd} -jar ${sample_tracking_jar} -s "${db_name}_${col_name}_${bac_id}" -w 5
+    ${java_cmd} -jar ${sample_tracking_jar} -s "${db_name}_${col_name}_${bac_id}" -w 6
+    ${java_cmd} -jar ${sample_tracking_jar} -s "${db_name}_${col_name}_${bac_id}" -w 7
+    ${java_cmd} -jar ${sample_tracking_jar} -s "${db_name}_${col_name}_${bac_id}" -w 8
+    ${java_cmd} -jar ${sample_tracking_jar} -s "${db_name}_${col_name}_${bac_id}" -w 9
+
+  popd >& /dev/null
+end
+
+#######################################################################################
+csh
+setenv PATH /usr/local/packages/clc-ngs-cell-2.0.5-linux_64:/usr/local/packages/clc-bfx-cell:${PATH}
+umask 002
+
+set sample_tracking_jar = /usr/local/projects/CAMERA/SampleTracking/SampleTracking.jar
+set java_cmd = /usr/local/java/1.6.0/bin/java
+
+set project_root = /usr/local/projects/VHTNGS
+set sample_data_root = ${project_root}/sample_data_new
+set triplet_file_name = /home/tstockwe/for_avian_flu/20100714_cas2consed_triplet.txt
+
+foreach bc_rec ( `cat ${triplet_file_name} | tr -d ' ' | tr ',' ':' ` )
+  set db_name  = `echo "${bc_rec}" | cut -d ':' -f 1`
+  set col_name = `echo "${bc_rec}" | cut -d ':' -f 2`
+  set bac_id   = `echo "${bc_rec}" | cut -d ':' -f 3`
+  set has_sff = 0
+  set has_solexa = 0
+  set has_sanger = 0
+
+  echo "INFO: setting sampleLinuxPathToAssembly for [${db_name}/${col_name}/${bac_id}]"
+  set sample_data = ${sample_data_root}/${db_name}/${col_name}/${bac_id}
+  set sample_mapping_dir = ${sample_data}/mapping
+
+  ${java_cmd} -jar ${sample_tracking_jar} -s "${db_name}_${col_name}_${bac_id}" -U sampleLinuxPathToAssembly="${sample_mapping_dir}/consed_with_sanger/edit_dir"
+end

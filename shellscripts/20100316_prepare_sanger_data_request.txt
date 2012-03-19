@@ -1,0 +1,96 @@
+csh
+
+set project_root = /usr/local/projects/VHTNGS
+set sample_data_root = ${project_root}/sample_data
+set db_name  = giv3
+set col_name = HI
+set col_name = MCE
+set datestamp = 20100330
+
+foreach col_name ( ` echo "AK CC COH DB DW HI MCE OHC RF SJC" | tr ' ' '\n' ` )
+  set out_filename = ~/for_avian_flu/${datestamp}_${db_name}_${col_name}_chromats_to_load.txt
+  if ( -e ${out_filename} ) then
+    rm ${out_filename}
+  endif
+  touch ${out_filename}
+
+  foreach i ( `ls -1d /usr/local/projects/VHTNGS/sample_data/${db_name}/${col_name}/*/mapping/consed/edit_dir`)
+    set db_name  = ` echo "${i}" | cut -d '/' -f 7 `
+    set col_name = ` echo "${i}" | cut -d '/' -f 8 ` 
+    set bac_id   = ` echo "${i}" | cut -d '/' -f 9 `
+    set chromat_dir = ` echo "${i}" | sed -e "s/edit_dir/chromat_dir/" `
+    echo "${db_name},${col_name},${bac_id},${chromat_dir}" >> ${out_filename}
+  end
+end
+
+
+set project_root = /usr/local/projects/VHTNGS
+set sample_data_root = ${project_root}/sample_data
+set db_name  = giv3
+set datestamp = 20100330
+set collections = "AK CC COH DB DW HI MCE OHC RF SJC"
+
+set datestamp = 20100330
+set db_name  = giv
+set collections = "DW09 MCWS"
+
+set datestamp = 20100330
+set db_name  = swiv
+set collections = "SW"
+
+
+foreach col_name ( ` echo "${collections}" | tr ' ' '\n' ` )
+  set out_filename = ~/for_avian_flu/${datestamp}_${db_name}_${col_name}_chromats_to_load.txt
+  if ( -e ${out_filename} ) then
+    rm ${out_filename}
+  endif
+  touch ${out_filename}
+
+  foreach i ( `ls -1d /usr/local/projects/VHTNGS/sample_data/${db_name}/${col_name}/*/mapping`)
+    set db_name  = ` echo "${i}" | cut -d '/' -f 7 `
+    set col_name = ` echo "${i}" | cut -d '/' -f 8 ` 
+    set bac_id   = ` echo "${i}" | cut -d '/' -f 9 `
+    set chromat_dir = ` echo "${i}/consed/chromat_dir"  `
+    set final_fasta_reads = ${i}/${db_name}_${col_name}_${bac_id}_final.fasta
+    if ( -e ${final_fasta_reads} ) then
+      echo "INFO: [${db_name},${col_name},${bac_id}] already has Sanger data prepared"
+    else
+      echo "${db_name},${col_name},${bac_id},${chromat_dir}" >> ${out_filename}
+    endif
+  end
+end
+
+set project_root = /usr/local/projects/VHTNGS
+set sample_data_root = ${project_root}/sample_data
+set datestamp = 20100401
+set db_name  = giv3
+set collections = "AK CC COH DB DW HI MCE OHC RF SJC"
+set db_name  = giv
+set collections = "DW09 MCWS"
+set db_name  = swiv
+set collections = "SW"
+
+foreach col_name ( ` echo "${collections}" | tr ' ' '\n' ` )
+  set out_filename = ~/for_avian_flu/${datestamp}_${db_name}_${col_name}_chromats_to_load.txt
+  if ( -e ${out_filename} ) then
+    rm ${out_filename}
+  endif
+  touch ${out_filename}
+
+  foreach i ( `ls -1d /usr/local/projects/VHTNGS/sample_data/${db_name}/${col_name}/*/mapping`)
+    set db_name  = ` echo "${i}" | cut -d '/' -f 7 `
+    set col_name = ` echo "${i}" | cut -d '/' -f 8 ` 
+    set bac_id   = ` echo "${i}" | cut -d '/' -f 9 `
+    set chromat_dir = ` echo "${i}/consed/chromat_dir"  `
+    set final_fasta_reads = ${i}/${db_name}_${col_name}_${bac_id}_final.fasta
+    echo "${db_name},${col_name},${bac_id},${chromat_dir}" >> ${out_filename}
+    endif
+  end
+end
+
+
+
+
+
+
+

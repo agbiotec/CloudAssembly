@@ -1,0 +1,48 @@
+set db_name = piv
+set col_name = MG
+set bac_id = 35921
+set bac_id = 35922
+set bac_id = 35925
+
+  pushd /usr/local/projects/VHTNGS/sample_data_new/${db_name}/${col_name}/${bac_id}/mapping
+    echo "INFO: running clc_ref_assemble_long for [${db_name}_${col_name}_${bac_id}]"
+
+    set sample_data_merged_sff = /usr/local/projects/VHTNGS/sample_data_new/${db_name}/${col_name}/${bac_id}/merged_sff
+    set best_edited_refs_file = ${db_name}_${col_name}_${bac_id}_reference_edited.fasta
+    set final_sff_reads = ${db_name}_${col_name}_${bac_id}_final.sff
+    set final_fastq_reads = ${db_name}_${col_name}_${bac_id}_final.fastq
+    set final_fasta_reads = ${db_name}_${col_name}_${bac_id}_final.fasta
+
+    set input_read_files = ""
+    foreach key (`ls -1 ${sample_data_merged_sff} | grep "\.[ACGT][ACGT][ACGT][ACGT]\." | cut -d '.' -f 2 | sort -u`)
+      set input_read_files = `echo "${input_read_files} -q ${final_sff_reads:r}.${key}.sff"`
+    end
+
+    if ( `cat ${final_fasta_reads} | wc -l` > 0 ) then
+      set input_read_files = `echo "${input_read_files} -q ${final_fasta_reads}"`
+    endif
+
+    if ( `cat ${final_fastq_reads} | wc -l` > 0 ) then
+      set input_read_files = `echo "${input_read_files} -q ${final_fastq_reads}"`
+    endif
+
+    clc_ref_assemble_long \
+      -s 0.95 \
+      -a global \
+      -o ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs_global.cas \
+      ${input_read_files} \
+      -d ${best_edited_refs_file}
+
+    find_variations \
+      -a ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs_global.cas \
+      -c 2 \
+      -o ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs_global.new_contigs \
+      -v \
+      -f 0.2 >& ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs_global_find_variations.log
+
+    echo "INFO: running fluValidator for [${db_name}_${col_name}_${bac_id}]"
+    /usr/local/devel/DAS/software/ElviraStaging/bin/fluValidator \
+      --fasta ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs_global.new_contigs > \
+      ${db_name}_${col_name}_${bac_id}_hybrid_edited_refs_global.new_contigs.fluValidator 
+  popd
+
