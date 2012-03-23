@@ -1,0 +1,636 @@
+#! /usr/local/bin/perl -w
+
+eval 'exec /usr/local/bin/perl -w -S $0 ${1+"$@"}'
+    if 0; # not running under some shell
+
+# $Id$
+
+#
+# Copyright (c) 2011, J. Craig Venter Institute, Inc. All rights reserved.
+#
+
+#
+# TODO - test
+#
+
+use strict;
+use Log::Log4perl qw(:levels);
+
+use Cwd;
+use File::Basename;
+use Getopt::Long qw(:config no_ignore_case);
+use vars qw(@DEPEND $VERSION);
+$VERSION = qw$Revision$[1];
+@DEPEND = qw(Log::Log4perl);
+
+my $SW_VERSION = "runCmd version 3.0";
+my $app = Log::Log4perl::Appender->new("Log::Log4perl::Appender::Screen");
+#my $layout = Log::Log4perl::Layout::PatternLayout->new("%d [%-4p] %F@%-5L-> %m %n");
+my $layout = Log::Log4perl::Layout::PatternLayout->new("[%-4p] @%-5L-> %m %n");
+$app->layout($layout);
+my $logger = Log::Log4perl->get_logger();
+$logger->level($INFO);
+$logger->add_appender($app);
+
+my $SGE_DIR = "/usr/local/sge_current/bin/lx24-amd64";
+my $QSUB_EXE = "$SGE_DIR/qsub";
+my $QDEL_EXE = "$SGE_DIR/qdel";
+my $DF_CMD = "/bin/df -k -t ibrix -t nfs";
+my $NO_NFS = 0;
+my $FAST_QUEUE = "fast";
+my $MEDIUM_QUEUE = "medium";
+my $MARATHON_QUEUE = undef;
+my $FAST_DURATION = 60;  # minutes
+my $MEDIUM_DURATION = 7200;  # 12 hours x 60 minutes
+
+my $request_id = undef;
+
+my $USAGE = q{
+    Usage:
+    runCmd [options] -c [command in quotes] --project [project code]
+    -o [stdout_file] -e [stderr_file] -i [stdin_file]  [requirements]
+
+    For the long manual invoke with the -h or --help option.
+};
+
+my $MANUAL = q{
+ RELEASE
+    * Release 3.0 *
+
+NAME
+    runCmd2, runLinux2 - run a computational command on the grid
+
+SYNOPSIS
+    runCmd2 [options] -c [commandline in quotes] -o [stdout_file]
+      -e [stderr_file] -i [stdin_file] [requirements]
+
+DESCRIPTION
+
+    runCmd2 is a simple front-end for submitting commands to the JCVI grid.
+    runCmd2 takes a unix command line invocation and distributes it to a free
+    JCVI server machine that satisfies all the requirements given.  runCmd2 is
+    generally meant to distributed computational programs/scripts like blast
+    and hmm.  It is not generally recommended to use to distribute simple
+    shell commands like mkdir, grep or find.  There are options to set
+    requirements on minimum physical memory(--memory), and machine
+    name(--machine).
+
+    runCmd2's errors are sent to standard error but all error reporting
+    for the given command is sent to .command.stderr.(pid) or to a file
+    given with the -e option. By default the runCmd2 waits for the command to
+    finish before returning (see --nowait).
+
+*** IMPORTANT NOTES PLEASE READ ***
+    1. The commandline parameter should always be in double or single quotes
+    to prevent confusion between options to runCmd2 and options to the actual
+    command to run. See -c option below.
+
+    2. The command and all file parameters need to be located on an NFS server
+    such as /usr/local/scratch and /usr/local/projects.  This is because the
+    command will eventually run on a remote machine that will not have access
+    to local files.
+
+    3. Shell constructs such as pipes("|") and redirects(">") are not
+    supported in the commandline given.  You must use the -o and -e options,
+    see below.
+
+STOPPING A COMMAND
+
+    If the -nowait wasn't used then a command can be stopped with a Control-C
+    or by sending the process a HUP or TERM signal. runCmd2 will catch the
+    signal and notify the cluster to terminate the command and then exit.
+
+    If the -nowait was used or if the runCmd2 process is gone then you can use
+    the qdel command.
+
+EXAMPLES
+
+    To run blast and not wait for the command:
+    > cd /usr/local/scratch/dsommer  (an nfs mounted directory)
+    > runCmd2 -c "blastp /usr/local/db/panda/nraa/nraa test.pep -filter none \
+    -cpus 1" -o blastp.results -e blastp.errors --nowait
+
+OPTIONS
+
+    -c, --commandline [command invocation]
+      The command line invocation of a program that would normally be entered
+      at the shell prompt. This must be enclosed in double quotes. If your
+      command line already contains double quotes use single quotes or escape
+      the double quotes in your command line with a \ character in the bash
+      shell.
+
+      Example: runCmd2 "command \"arg\" "
+
+      Note: This example is correct in the bash shell. For other shells, such
+      as the C-shell, use the appropriate quoting/escaping mechanism specific
+      to that shell.
+
+    --debug LEVEL
+      The level of output produced by runCmd2. Each level includes the lower
+      levels.
+      Defaults to 0.
+      LEVEL      DESCRIPTION
+      0          Errors
+      1          Warnings and Errors
+      2          Info, Warnings, and Errors
+      3          Output everything
+
+    --duration
+      Approximate duration of the request in minutes. Length overrides
+      duration.
+
+    -e, --error FILE
+      The FILE where to redirect standard error of the command. The command
+      will be running on a remote machine and so standard error will not be
+      sent to the terminal. Defaults to .command.stderr.(pid) and deleted
+      only if commandline exits with a value of 0. In the case that -e was
+      given standard error will not be deleted on success.
+
+    -h, --help
+      Print out this manual and exit.
+
+    -i, --input FILE
+      The FILE where standard input should be read. Defaults to /dev/null.
+
+    --length
+      Approximate length of the request. Valid values are 'fast', 'medium' or
+      'marathon'. Defaults to 'medium'. Length overrides duration.
+
+    --machine Host
+      Fully qualified hostname that the command should run on.
+      Example: --machine prowler.tigr.org
+
+    --memory MegaBytes
+      The minimum amount of memory in megabytes that the grid host should have
+      to run the job.
+
+    --notify
+	Email will be sent to the address of the current user when the job
+	exits or aborts.
+
+    --nowait
+      Submit the command and return without waiting for the command to finish.
+      Defaults to off.
+
+    -o, --output FILE
+      The FILE where to redirect standard output of the command. The command
+      will be running on a remote machine and so standard output will not be
+      sent to the terminal.
+
+    --project
+      Project code of the request, to which it belongs to. Examples: '8010',
+      '8020'. Project code is required now to run jobs on the Grid.
+
+    -v, --version
+      Print out the version and exit.
+
+
+OBSOLETE OPTIONS
+
+    --nonresched
+      Obsolete. No longer supported. Only useful when jobs were run on
+      desktops.
+
+    --passthrough
+      Obsolete. No longer supported. Can be implemented by writing a simple
+      script to submit to the grid with all of your required commands.
+
+    -s, --system
+      Obsolete. No longer supported. Jobs only run on the grid now, and the
+      grid is all 64-bit Linux.
+
+
+FILES
+
+    .command.stderr.pid
+       Created if -e option is not set.
+
+    .cid.pid
+       File that contains the id assigned to the command by the grid.
+       Needed to stop or track the command.
+
+EXIT CODES
+    Passes on the return value of the command that is given.
+    On a failure to run the command or improper parameters returns -1.
+
+Dependencies
+    none
+
+Author
+    JCVI Informatics Core Services (ICS)
+
+Copyright (c) 2007, J. Craig Venter Institute. All rights reserved.
+
+};
+
+
+#
+# checkCommand - checks if a command exists and is executable. If command
+# starts "/" it is assumed to be the fullpath to the command, otherwise the
+# users path is searched to find the full path to the command.
+#
+sub checkCommand{
+    my ( $command, $initialdir ) = @_;
+    if( defined( $command ) ){
+        if( $command =~ /^\// ){  # is this the full path to the command?
+            if( -x $command ){  # is it executable?
+                return $command;
+	    }else{
+                print STDERR "Error: $command is not executable or doesn't exist\n";
+                exit(-1);
+            }
+	}else{
+            my $dir = dirname( $command );
+            if( ( $dir eq "." ) && ! ( $command =~ /^\.\// ) ){
+                # we need to search PATH for command
+                my @paths = split( /:/, $ENV{"PATH"} );
+                for my $path ( @paths ){
+                    my $fullpath = "$path/$command";
+                    if( -x $fullpath ){
+                        return $fullpath;
+                    }
+                }
+                print STDERR "Error: $command is not executable or not in your path\n";
+                exit(-1);
+            }else{
+                my $fullpath = "$initialdir/$command";
+                if( -x $fullpath ){
+                    return $fullpath;
+                }else{
+                    print STDERR "Error: $fullpath is not executable or doesn't exist\n";
+                    exit(-1);
+                }
+            }
+        }
+    }else{
+        print STDERR "Error: A command must be specified with the -c option \n";
+        exit(-1);
+    }
+}
+
+#
+# trim whitepace from beginning and end of a string
+#
+sub trim{
+    my @out = @_;
+    for ( @out ){
+        s/^\s+//;
+        s/\s+$//;
+    }
+    return wantarray ? @out : $out[0];
+}
+
+#
+# isNFS - checks if 'path' is on a nfs volume.
+#
+sub isNFS{
+    my ( $path ) = @_;
+    if( $NO_NFS ){
+        return 1;
+    }
+    my @df_out = `$DF_CMD $path 2> /dev/null`;
+    shift @df_out;
+    if( scalar( @df_out ) != 0 ){
+        return 1;
+    }else{
+        return 0;
+    }
+}
+
+#
+# finally - clean everything up
+#
+sub finally{
+    if( defined( $request_id ) ){
+        print STDERR " Cleaning up temp files \n";
+        unlink ".command.stderr.$$";
+        unlink ".cid.$$";
+    }
+}
+
+sub handler{
+    my ( $signal ) = @_;
+    print STDERR "RunCommand received signal $signal \n";
+    print STDERR "Sending stop signal to cluster \n";
+    my $qdel_result = `$QDEL_EXE "$request_id" 2>&1`;
+    finally();
+    exit(-1);
+}
+
+MAIN:{
+    $SIG{'HUP'} = 'handler';
+    $SIG{'INT'} = 'handler';
+    $SIG{'QUIT'} = 'handler';
+    $SIG{'TERM'} = 'handler';
+
+    my $commandline = undef;
+    my $input = undef;
+    my $output = undef;
+    my $error = ".command.stderr.$$";
+    my $nowait = 0;
+    my $help = 0;
+    my $version = 0;
+    my $memory = undef;
+    my $host = undef;
+    my $project = undef;
+    my $length = undef;
+    my $duration = undef;
+    my $shell = undef;
+    my $queue = $MEDIUM_QUEUE;
+    my $command;
+    my $args;
+    my $notify = undef;
+    my $debug = 2; # Default debug level
+    my $sleeptime = 15;
+
+    my $options = GetOptions( "commandline=s" => \$commandline,
+                            "output=s" => \$output, "input=s" => \$input,
+                            "error=s" => \$error, "memory=i" => \$memory,
+                            "machine=s" => \$host, "project=s" => \$project,
+                            "nowait" => \$nowait, "fs" => \$NO_NFS,
+                            "duration=i" => \$duration, "length=s" => \$length,
+			    "help" => \$help, "notify" => \$notify,
+			    "version" => \$version, "debug=i" => \$debug, );
+
+    # if -h then print manual and exit
+    if( $help ){
+        print $MANUAL;
+        exit(0);
+    }
+
+    if ( $version ){
+        print "$SW_VERSION \n";
+        exit(0);
+    }
+
+    if( ! $options ){
+        print $USAGE;
+        exit(-1);
+    }
+
+    if( defined( $debug ) ){
+	if( $debug == 0 ){
+	    $logger->level($ERROR);
+	}elsif( $debug == 1 ){
+	    $logger->level($WARN);
+	}elsif( $debug == 3 ){
+	    $logger->level($DEBUG);
+	}else{
+	    $logger->level($INFO);
+	}
+    }
+
+    if( defined( $commandline ) ){
+        ( $command, $args ) = split / /, trim( $commandline ), 2;
+        #$logger->debug( "command[$command] args[$args]\n");
+    }else{
+        print "The '-c command' is a required option \n";
+        print $USAGE;
+        exit(-1);
+    }
+    $logger->debug( "commandline[$commandline]\n" );
+
+    #  get & check initial dir
+    my $initialdir = getcwd();
+    if( defined( $initialdir ) ){
+        if( ! isNFS( $initialdir ) ){
+            print STDERR "Error: current working directory is not on a valid NFS mount point\n";
+            exit(-1);
+        }
+    }else{
+        print STDERR "Error: can't get current working directory\n";
+        exit(-1);
+    }
+
+    # check command
+    $command = checkCommand( $command, $initialdir );
+    if( ! isNFS( $command ) ){
+        print STDERR "Error: $command command is not on a NFS mount point\n";
+        exit(-1);
+    }
+
+    # Check for the project name
+    if( defined( $project ) ){
+        print "Request belongs to project: $project \n";
+    }else{
+        print STDERR "Error: \nMissing project code, which is required to use runCmd. \nPlease retry with a valid project code.\n";
+        print $USAGE;
+        exit(-1);
+    }
+
+    ## check shell
+    #if( defined( $shell ) ){
+    #    if( ! ( -e $shell ) ){
+    #        print STDERR "Error: shell '$shell' is not executable\n";
+    #        exit(-1);
+    #    }
+    #}
+
+    if( defined( $length ) ){ # Check for length value
+	print "Length of the request: $length \n";
+	if( $length =~ /fast/ ){
+	    $queue = $FAST_QUEUE;
+	    $sleeptime = 5;
+	}elsif( $length =~ /medium/ ){
+	    $queue = $MEDIUM_QUEUE;
+	    $sleeptime = 15;
+	}elsif( $length =~ /marathon/ ){
+	    $queue = $MARATHON_QUEUE;
+	    $sleeptime = 60;
+	}else{
+	    $queue = $MEDIUM_QUEUE;
+	    $sleeptime = 15;
+	}
+    }elsif( defined( $duration ) ){ # Check for duration value
+	print "Approximate duration of the request: $duration \n";
+	if( $duration <= $FAST_DURATION ){
+	    $queue = $FAST_QUEUE;
+	    $sleeptime = 5;
+	}elsif( $duration <= $MEDIUM_DURATION ){
+	    $queue = $MEDIUM_QUEUE;
+	    $sleeptime = 15;
+	}else{
+	    $queue = $MARATHON_QUEUE;
+	    $sleeptime = 60;
+	}
+    }
+
+    # check output
+    if( defined( $output ) ){
+        if( ! ( $output =~ /^\// ) ){
+            $output = $initialdir . "/" . $output;
+        }
+        my $dir = dirname( $output );
+        if( -e $output ){
+            if( ! -w $output ){
+                print STDERR "Error: can't write to output file: $output\n";
+                exit(-1);
+            }
+        }else{
+            if( ! -w $dir ){
+                print STDERR "Error: can't write to output dir: $dir\n";
+                exit(-1);
+            }
+        } # end else
+        if( ! isNFS( $dir ) ){
+           print STDERR "Error: output '$output' is not on a valid NFS mount\n";
+           exit(-1);
+        }
+    }
+
+    # check error
+    if( defined( $error ) ){
+        if( ! ( $error =~ /^\// ) ){
+            $error = $initialdir . "/" . $error;
+        }
+        my $dir = dirname( $error );
+        if( -e $error ){
+            if( ! -w $error ){
+                print STDERR "Error: can't write to error file: $error\n";
+                exit(-1);
+            }
+        }else{
+            if( ! -w $dir ){
+                print STDERR "Error: can't write to error dir: $dir\n";
+                exit(-1);
+            }
+        }
+        if( ! isNFS( $dir ) ){
+            print STDERR "Error: error output '$error' is not on a NFS mount\n";
+            exit(-1);
+        }
+    }
+
+    # need to check input
+    if( defined( $input ) ){
+        if( ! ( $input =~ /^\// ) ){
+            $input = $initialdir . "/" . $input;
+        }
+        if( ! ( ( -r $input ) && ( isNFS( $input ) ) ) ){
+            print STDERR "Error: couldn't read input '$input'\n";
+            exit(-1);
+        }
+    }
+
+    my $cmd_name = basename( $command );
+    my $qsub_cmd = "$QSUB_EXE -cwd -V -P $project -N $cmd_name ";
+    if( defined( $shell ) ){
+	$qsub_cmd .= " -S $shell ";
+    }
+    if( defined( $queue ) ){
+	$qsub_cmd .= " -l $queue ";
+    }
+    if( defined( $host ) ){
+	$qsub_cmd .= " -l hostname=$host ";
+    }
+    if( defined( $memory ) ){
+	$qsub_cmd .= " -l memory=${memory}M ";
+    }
+    if( defined( $notify ) ){
+	my $email = `whoami`;
+	chomp( $email );
+	$email .= "\@jcvi.org";
+	#$logger->debug( "email[$email]\n");
+	$qsub_cmd .= " -m ea -M $email ";
+    }
+    if( defined( $input ) ){
+	$qsub_cmd .= " -i $input ";
+    }
+    if( defined( $output ) ){
+	$qsub_cmd .= " -o $output ";
+    }
+    if( defined( $error ) ){
+	$qsub_cmd .= " -e $error ";
+    }
+    $qsub_cmd .= " \"$commandline\" ";
+    $logger->debug( "qsub_cmd[$qsub_cmd]\n" );
+
+    # Submit job.
+    my $qsub_result=`$qsub_cmd`;
+    if ( $qsub_result =~ /Your job [0-9]{7} \(".*"\) has been submitted/ ){
+	my $ignore = undef;
+	my $value = undef;
+	( $ignore, $value ) = split/job /, $qsub_result;
+	#$logger->debug( "value[$value] ignore[$ignore]\n");
+	( $request_id, $ignore ) = split/ \(".*\) has/, $value;
+	#$logger->debug( "request_id[$request_id] ignore[$ignore]\n");
+	if( $request_id < 1 ){
+	    print STDERR "Error: command submission rejected by server";
+	    exit(-1);
+	}
+	print "Command submitted and ID returned is $request_id\n";
+    }else{
+	print STDERR "Error: ${qsub_result}";
+	exit(-1);
+    }
+    if( $request_id < 1 ){
+	print STDERR "Error: command submission rejected by server";
+	exit(-1);
+    }
+    my $id_file = "./.cid.$$";
+    if( open( ID, "> $id_file" ) ){
+	print ID "# temp file containing run command ID\n";
+	print ID "id=$request_id\n";
+	close( ID );
+	print "Command ID is stored in .cid.$$\n";
+    }else{
+	print " Warning could not save command ID to .cid.$$\n";
+    }
+
+    if( ! $nowait ){ # Wait for job to finish.
+	print " Start waiting for command.\n";
+	my $qacct_result = "";
+	while( $qacct_result =~ /^$/ ){
+	    $qacct_result = `qacct -j $request_id 2> /dev/null`;
+	    #$logger->debug( "qacct_result[$qacct_result]\n");
+	    sleep($sleeptime);
+	}
+	#$logger->debug( "qacct_result[$qacct_result]\n");
+	my $tag = undef;
+	my @qacct_lines = split /\n/, $qacct_result;
+	#$logger->debug( "num lines[$#qacct_lines]\n");
+	my $result = undef;
+	foreach my $line ( @qacct_lines ){
+	    #$logger->debug( "line[$line]\n");
+	    if( $line =~ /exit_status.*/ ){
+		( $tag, $result ) = split /\s+/, $line;
+	    }
+	}
+	#$logger->debug( "result[$result] tag[$tag]\n");
+	my $state = "";
+	my $message = "";
+	if( $result =~ /0/ ){
+	    $state = "FINISHED";
+	    $message = "";
+	}else{
+	    $state = "FAILURE";
+	    while( ! -r $error ){ # Wait for error file to become readable.
+	        sleep(15);
+	    }
+	    open( SGE_ERROR, $error );
+	    while( my $line = <SGE_ERROR> ){
+		$message .= $line;
+	    }
+	    close( SGE_ERROR );
+	}
+	#$logger->debug( "state[$state] message[$message]\n");
+	print " Request finished, final state of command is $state \n";
+	if( $state eq "FAILURE" ){
+	    print " Message returned: $message \n";
+	    exit(-1);
+	}
+	elsif( $state eq "FINISHED" ){
+	    print STDERR " Value returned: 0 \n";
+	    finally();
+	    exit(0);
+	}else{  #interrupted state
+	    print " Attempted to execute: $commandline \n";
+	    print " Message returned: $message \n";
+	    finally();
+	    exit(0);
+	}
+    }else{ # Don't wait for job to finish.
+	print " Not waiting for command to run, bye\n";
+	exit(0);
+    }
+} # End MAIN
